@@ -58,7 +58,7 @@ export function SetupPage() {
   // Step 2
   // Variable buy-in
   const [buyInType, setBuyInType] = useState<'FIXED' | 'VARIABLE'>('FIXED');
-  const [buyInPresetsStr, setBuyInPresetsStr] = useState('');
+  const [buyInPresetBoxes, setBuyInPresetBoxes] = useState<string[]>(['', '', '', '']);
 
   const [newPlayerName, setNewPlayerName] = useState('');
   const [isStarting, setIsStarting] = useState(false);
@@ -89,7 +89,9 @@ export function SetupPage() {
       setSelectedStructureId(tournament.blindStructureId);
       setBuyInType((tournament.buyInType as 'FIXED' | 'VARIABLE') || 'FIXED');
       const presets: number[] = JSON.parse(tournament.buyInPresets || '[]');
-      setBuyInPresetsStr(presets.map((c) => (c / 100).toString()).join(', '));
+      const boxes = ['', '', '', ''];
+      presets.slice(0, 4).forEach((c, i) => { boxes[i] = (c / 100).toString(); });
+      setBuyInPresetBoxes(boxes);
     }
   }, [tournament, id]);
 
@@ -97,7 +99,7 @@ export function SetupPage() {
 
   const handleCreateOrUpdate = async () => {
     const presetsInCents = buyInType === 'VARIABLE'
-      ? JSON.stringify(buyInPresetsStr.split(',').map((s) => Math.round(parseFloat(s.trim()) * 100)).filter((n) => n > 0))
+      ? JSON.stringify(buyInPresetBoxes.map((s) => Math.round(parseFloat(s || '0') * 100)).filter((n) => n > 0))
       : '[]';
     const data = {
       name: name || `Game - ${today}`,
@@ -355,15 +357,29 @@ export function SetupPage() {
                 </label>
               </div>
               {buyInType === 'VARIABLE' && (
-                <div className="mt-2">
-                  <label className="block text-xs text-gray-400 mb-1">Preset amounts (comma-separated, e.g. 20, 40, 60)</label>
-                  <input
-                    type="text"
-                    value={buyInPresetsStr}
-                    onChange={(e) => setBuyInPresetsStr(e.target.value)}
-                    placeholder="20, 40, 60"
-                    className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-felt"
-                  />
+                <div className="mt-3">
+                  <label className="block text-xs text-gray-400 mb-2">Preset buy-in amounts — up to 4 options (BBD $)</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {buyInPresetBoxes.map((val, i) => (
+                      <div key={i}>
+                        <label className="block text-[11px] text-gray-600 mb-1 text-center">Option {i + 1}</label>
+                        <input
+                          type="number"
+                          value={val}
+                          onChange={(e) => {
+                            const next = [...buyInPresetBoxes];
+                            next[i] = e.target.value;
+                            setBuyInPresetBoxes(next);
+                          }}
+                          min="0"
+                          step="1"
+                          placeholder="—"
+                          className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-center placeholder-gray-600 focus:outline-none focus:border-felt"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-gray-600 mt-1">Leave blank to skip. During the game, a popup will let you pick which amount or enter custom.</p>
                 </div>
               )}
             </div>
