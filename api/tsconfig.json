@@ -1,13 +1,16 @@
 {
-  "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
     "outDir": "./dist",
-    "rootDir": "../",
-    "paths": {
-      "shared": ["../shared/src/index.ts"]
-    }
+    "rootDir": "../"
   },
-  "include": ["./**/*.ts", "../server/src/**/*.ts", "../shared/src/**/*.ts"]
+  "include": [
+    "./**/*.ts",
+    "../shared/src/**/*.ts"
+  ]
 }

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "npm run vercel-build",
+  "buildCommand": "npm run build -w client",
   "outputDirectory": "client/dist",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" },
@@ -9,11 +9,7 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 30,
-      "memory": 512,
-      "runtime": "nodejs20.x"
+      "memory": 512
     }
-  },
-  "env": {
-    "NODE_ENV": "production"
   }
 }

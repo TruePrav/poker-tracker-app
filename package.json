@@ -7,7 +7,18 @@
     "build": "npm run build -w shared && npm run build -w server && npm run build -w client",
     "vercel-build": "npm run build -w client"
   },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.0",
+    "pg": "^8.18.0",
+    "zod": "^3.24.0"
+  },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/pg": "^8.16.0",
+    "@vercel/node": "^5.0.0",
     "concurrently": "^9.1.0",
     "typescript": "^5.7.0"
   }

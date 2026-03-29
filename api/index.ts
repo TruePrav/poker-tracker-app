@@ -1,5 +1,3 @@
-// Vercel serverless function — wraps the Express app
-// Env vars come from Vercel dashboard (not .env file)
-import app from '../server/src/app.js';
+import app from './app';
 
 export default app;
