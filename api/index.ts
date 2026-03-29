@@ -1,10 +1,5 @@
-import dotenv from 'dotenv';
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: resolve(__dirname, '../server/.env') });
-
+// Vercel serverless function — wraps the Express app
+// Env vars come from Vercel dashboard (not .env file)
 import app from '../server/src/app.js';
 
 export default app;

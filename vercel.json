@@ -9,7 +9,11 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 30,
-      "memory": 512
+      "memory": 512,
+      "runtime": "nodejs20.x"
     }
+  },
+  "env": {
+    "NODE_ENV": "production"
   }
 }
