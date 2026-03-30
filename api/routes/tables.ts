@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { query, withTransaction } from '../db';
-import { MAX_SEATS_PER_TABLE } from '../../shared/src/index';
+const MAX_SEATS_PER_TABLE = 9;
 
 export const tableRoutes = Router();
 
