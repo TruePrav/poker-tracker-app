@@ -1,6 +1,7 @@
 import pg from 'pg';
 
-const { Pool } = pg;
+// Handle both ESM default import and CJS require patterns
+const Pool = pg.Pool || (pg as any).default?.Pool;
 
 let pool: pg.Pool | null = null;
 

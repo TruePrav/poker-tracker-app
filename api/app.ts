@@ -30,8 +30,14 @@ app.use(
 app.use(express.json());
 
 // Health check
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', name: 'Mahtani Poker Room API' });
+app.get('/api/health', async (_req, res) => {
+  try {
+    const { query } = await import('./db');
+    await query('SELECT 1');
+    res.json({ status: 'ok', name: 'Mahtani Poker Room API', db: 'connected' });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', error: err.message, stack: err.stack?.split('\n').slice(0,3) });
+  }
 });
 
 // Routes
