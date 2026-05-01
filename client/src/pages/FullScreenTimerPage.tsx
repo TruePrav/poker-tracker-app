@@ -23,6 +23,7 @@ export function FullScreenTimerPage() {
   const initTimer = useTimerStore((s) => s.initializeFromTournament);
 
   const intervalRef = useRef<number | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
   useEffect(() => {
     if (id) loadTournament(Number(id));
@@ -64,7 +65,41 @@ export function FullScreenTimerPage() {
     };
   }, [isRunning]);
 
-  // Click to toggle pause/play
+  // Keep the device screen awake while the timer is visible.
+  useEffect(() => {
+    let cancelled = false;
+    const acquire = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          const sentinel = await (navigator as Navigator & {
+            wakeLock: { request: (type: 'screen') => Promise<WakeLockSentinel> };
+          }).wakeLock.request('screen');
+          if (cancelled) {
+            sentinel.release().catch(() => {});
+            return;
+          }
+          wakeLockRef.current = sentinel;
+        }
+      } catch {
+        // wake lock unsupported or denied — silently fall back
+      }
+    };
+    acquire();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && !wakeLockRef.current) {
+        acquire();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+      wakeLockRef.current?.release().catch(() => {});
+      wakeLockRef.current = null;
+    };
+  }, []);
+
+  // Click/tap toggles pause/play
   const handleClick = () => {
     isRunning ? timerPause() : timerStart();
   };
@@ -79,58 +114,85 @@ export function FullScreenTimerPage() {
 
   return (
     <div
-      className="min-h-screen bg-gray-950 flex flex-col items-center justify-center cursor-pointer select-none"
+      className="min-h-screen min-h-[100dvh] bg-gray-950 flex flex-col items-center justify-center cursor-pointer select-none px-4 py-6"
       onClick={handleClick}
+      style={{
+        paddingTop: 'max(env(safe-area-inset-top), 1.5rem)',
+        paddingBottom: 'max(env(safe-area-inset-bottom), 1.5rem)',
+      }}
     >
       {/* Timer */}
-      <div className="mb-8">
-        <p className={`text-[12rem] font-mono font-bold leading-none tracking-wider ${timerColor}`}>
+      <div className="mb-6 sm:mb-8">
+        <p
+          className={`font-mono font-bold leading-none tracking-wider text-center ${timerColor}`}
+          style={{ fontSize: 'clamp(5rem, 28vw, 12rem)' }}
+        >
           {formatTime(remainingSeconds)}
         </p>
       </div>
 
       {/* Blinds */}
-      <div className="text-center mb-8">
+      <div className="text-center mb-6 sm:mb-8 px-2">
         {currentBlind && !currentBlind.isBreak ? (
-          <p className="text-5xl font-bold text-white">
+          <p
+            className="font-bold text-white"
+            style={{ fontSize: 'clamp(1.5rem, 6vw, 3rem)' }}
+          >
             BLINDS: {currentBlind.smallBlind} / {currentBlind.bigBlind}
           </p>
         ) : currentBlind?.isBreak ? (
-          <p className="text-5xl font-bold text-yellow-400">BREAK</p>
+          <p
+            className="font-bold text-yellow-400"
+            style={{ fontSize: 'clamp(1.5rem, 6vw, 3rem)' }}
+          >
+            BREAK
+          </p>
         ) : null}
         {currentBlind && currentBlind.ante > 0 && (
-          <p className="text-2xl text-gray-400 mt-2">ANTE: {currentBlind.ante}</p>
+          <p
+            className="text-gray-400 mt-1 sm:mt-2"
+            style={{ fontSize: 'clamp(0.875rem, 3vw, 1.5rem)' }}
+          >
+            ANTE: {currentBlind.ante}
+          </p>
         )}
         {nextBlind && (
-          <p className="text-xl text-gray-500 mt-3">
+          <p
+            className="text-gray-500 mt-2 sm:mt-3"
+            style={{ fontSize: 'clamp(0.75rem, 2.5vw, 1.25rem)' }}
+          >
             NEXT: {nextBlind.isBreak ? 'BREAK' : `${nextBlind.smallBlind} / ${nextBlind.bigBlind}`}
           </p>
         )}
       </div>
 
       {/* Footer Info */}
-      <div className="flex items-center gap-12 text-gray-400">
+      <div className="flex items-center gap-6 sm:gap-12 text-gray-400 flex-wrap justify-center">
         <div className="text-center">
-          <p className="text-3xl font-bold text-white">{activePlayers}</p>
-          <p className="text-sm">Players</p>
+          <p className="font-bold text-white" style={{ fontSize: 'clamp(1.25rem, 5vw, 2rem)' }}>
+            {activePlayers}
+          </p>
+          <p className="text-xs sm:text-sm">Players</p>
         </div>
         <div className="text-center">
-          <p className="text-3xl font-bold text-gold">
+          <p className="font-bold text-gold" style={{ fontSize: 'clamp(1.25rem, 5vw, 2rem)' }}>
             {formatCurrencyShort(tournament?.totalPrizePool || 0)}
           </p>
-          <p className="text-sm">Prize Pool</p>
+          <p className="text-xs sm:text-sm">Prize Pool</p>
         </div>
         <div className="text-center">
-          <p className="text-3xl font-bold text-white">
+          <p className="font-bold text-white" style={{ fontSize: 'clamp(1.25rem, 5vw, 2rem)' }}>
             {currentLevel} / {blindLevels.length}
           </p>
-          <p className="text-sm">Level</p>
+          <p className="text-xs sm:text-sm">Level</p>
         </div>
       </div>
 
       {/* Pause indicator */}
       {!isRunning && (
-        <p className="mt-8 text-lg text-gray-600 animate-pulse">PAUSED - Click to resume</p>
+        <p className="mt-6 sm:mt-8 text-base sm:text-lg text-gray-600 animate-pulse text-center">
+          PAUSED &mdash; Tap to resume
+        </p>
       )}
     </div>
   );

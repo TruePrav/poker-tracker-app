@@ -22,28 +22,28 @@ export function PlayerDirectoryPage() {
   );
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-white">Players</h1>
+    <div className="p-4 sm:p-6 md:p-8 max-w-3xl mx-auto">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-white">Players</h1>
         <span className="text-sm text-gray-400">{players.length} total</span>
       </div>
 
       {/* Add Player */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-4 sm:mb-6">
         <input
           type="text"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
           placeholder="Enter player name..."
-          className="flex-1 px-4 py-2.5 bg-gray-900 border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-felt"
+          className="flex-1 min-w-0 px-3 sm:px-4 py-2.5 bg-gray-900 border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-felt"
         />
         <button
           onClick={handleAdd}
           disabled={!newName.trim()}
-          className="px-5 py-2.5 bg-felt hover:bg-felt-dark disabled:opacity-50 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
+          className="px-4 sm:px-5 py-2.5 bg-felt hover:bg-felt-dark disabled:opacity-50 text-white rounded-lg font-medium flex items-center gap-2 transition-colors flex-shrink-0"
         >
-          <Plus className="w-4 h-4" /> Add Player
+          <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add Player</span><span className="sm:hidden">Add</span>
         </button>
       </div>
 

@@ -447,19 +447,19 @@ export function TournamentPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="lg:h-screen flex flex-col lg:overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-gray-800">
-        <div>
-          <h1 className="text-lg font-bold text-white">{tournament.name}</h1>
-          <p className="text-xs text-gray-400">
-            {activePlayers.length} players remaining &middot; Level {currentLevel}/{blindLevels.length}
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 bg-gray-900 border-b border-gray-800">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-base sm:text-lg font-bold text-white truncate">{tournament.name}</h1>
+          <p className="text-[11px] sm:text-xs text-gray-400 truncate">
+            {activePlayers.length} players &middot; Level {currentLevel}/{blindLevels.length}
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
           <div className="text-right">
-            <p className="text-xs text-gray-400">Prize Pool</p>
-            <p className="text-xl font-bold text-gold">{formatCurrencyShort(tournament.totalPrizePool)}</p>
+            <p className="text-[10px] sm:text-xs text-gray-400">Prize Pool</p>
+            <p className="text-base sm:text-xl font-bold text-gold">{formatCurrencyShort(tournament.totalPrizePool)}</p>
           </div>
           <a
             href={`/tournament/${tournament.id}/timer`}
@@ -474,40 +474,40 @@ export function TournamentPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden">
         {/* Left: Timer */}
-        <div className="w-[420px] flex-shrink-0 border-r border-gray-800 flex flex-col p-6 gap-4 relative">
+        <div className="w-full lg:w-[420px] lg:flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-800 flex flex-col p-4 sm:p-6 gap-4 relative">
           {/* Break Overlay */}
           {currentBlind?.isBreak && !breakDismissed && (
-            <div className="absolute inset-0 z-20 bg-gray-900/95 flex flex-col items-center justify-center gap-6 p-6">
-              <p className="text-5xl font-bold text-yellow-400 animate-pulse">BREAK TIME</p>
-              <p className={`text-6xl font-mono font-bold tracking-wider ${timerColor}`}>
+            <div className="absolute inset-0 z-20 bg-gray-900/95 flex flex-col items-center justify-center gap-4 sm:gap-6 p-4 sm:p-6">
+              <p className="text-3xl sm:text-5xl font-bold text-yellow-400 animate-pulse">BREAK TIME</p>
+              <p className={`text-5xl sm:text-6xl font-mono font-bold tracking-wider ${timerColor}`}>
                 {formatTime(remainingSeconds)}
               </p>
-              <div className="flex gap-3">
+              <div className="flex gap-2 sm:gap-3 flex-wrap justify-center">
                 <button
                   onClick={() => timerAdjust(300)}
-                  className="px-4 py-2 bg-yellow-700 hover:bg-yellow-600 text-white rounded-lg text-sm font-medium"
+                  className="px-3 sm:px-4 py-2 bg-yellow-700 hover:bg-yellow-600 text-white rounded-lg text-xs sm:text-sm font-medium"
                 >
                   Extend +5 min
                 </button>
                 <button
                   onClick={() => timerAdjust(600)}
-                  className="px-4 py-2 bg-yellow-700 hover:bg-yellow-600 text-white rounded-lg text-sm font-medium"
+                  className="px-3 sm:px-4 py-2 bg-yellow-700 hover:bg-yellow-600 text-white rounded-lg text-xs sm:text-sm font-medium"
                 >
                   Extend +10 min
                 </button>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-2 sm:gap-3 flex-wrap justify-center">
                 <button
                   onClick={() => timerNextLevel()}
-                  className="px-4 py-2 bg-felt hover:bg-felt-dark text-white rounded-lg text-sm font-medium"
+                  className="px-3 sm:px-4 py-2 bg-felt hover:bg-felt-dark text-white rounded-lg text-xs sm:text-sm font-medium"
                 >
                   Skip Break
                 </button>
                 <button
                   onClick={() => setBreakDismissed(true)}
-                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium"
+                  className="px-3 sm:px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs sm:text-sm font-medium"
                 >
                   Dismiss
                 </button>
@@ -516,8 +516,9 @@ export function TournamentPage() {
           )}
 
           {/* Timer Display */}
-          <div className={`rounded-2xl p-8 text-center ${timerBg}`}>
-            <p className={`text-8xl font-mono font-bold tracking-wider ${timerColor}`}>
+          <div className={`rounded-2xl p-4 sm:p-8 text-center ${timerBg}`}>
+            <p className={`font-mono font-bold tracking-wider ${timerColor}`}
+               style={{ fontSize: 'clamp(3.5rem, 14vw, 6rem)' }}>
               {formatTime(remainingSeconds)}
             </p>
           </div>
@@ -526,18 +527,18 @@ export function TournamentPage() {
           <div className="text-center">
             {currentBlind && !currentBlind.isBreak ? (
               <>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-xl sm:text-2xl font-bold text-white">
                   {currentBlind.smallBlind} / {currentBlind.bigBlind}
                 </p>
                 {currentBlind.ante > 0 && (
-                  <p className="text-sm text-gray-400">Ante: {currentBlind.ante}</p>
+                  <p className="text-xs sm:text-sm text-gray-400">Ante: {currentBlind.ante}</p>
                 )}
               </>
             ) : currentBlind?.isBreak ? (
-              <p className="text-2xl font-bold text-yellow-400">BREAK</p>
+              <p className="text-xl sm:text-2xl font-bold text-yellow-400">BREAK</p>
             ) : null}
             {nextBlind && (
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">
                 Next: {nextBlind.isBreak ? 'BREAK' : `${nextBlind.smallBlind}/${nextBlind.bigBlind}`}
               </p>
             )}
@@ -545,15 +546,15 @@ export function TournamentPage() {
 
           {/* Timer Controls */}
           <div className="flex items-center justify-center gap-2">
-            <button onClick={timerPrevLevel} className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400" title="Previous level">
-              <SkipBack className="w-4 h-4" />
+            <button onClick={timerPrevLevel} className="p-2.5 sm:p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400" title="Previous level" aria-label="Previous level">
+              <SkipBack className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
-            <button onClick={() => timerAdjust(-60)} className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400" title="-1 min">
-              <Minus className="w-4 h-4" />
+            <button onClick={() => timerAdjust(-60)} className="p-2.5 sm:p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400" title="-1 min" aria-label="Subtract 1 minute">
+              <Minus className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
             <button
               onClick={handleToggleTimer}
-              className={`px-6 py-3 rounded-xl font-semibold text-sm flex items-center gap-2 ${
+              className={`px-5 sm:px-6 py-3 rounded-xl font-semibold text-sm flex items-center gap-2 ${
                 isRunning
                   ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
                   : 'bg-felt hover:bg-felt-dark text-white'
@@ -562,11 +563,11 @@ export function TournamentPage() {
               {isRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
               {isRunning ? 'Pause' : 'Start'}
             </button>
-            <button onClick={() => timerAdjust(60)} className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400" title="+1 min">
-              <Plus className="w-4 h-4" />
+            <button onClick={() => timerAdjust(60)} className="p-2.5 sm:p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400" title="+1 min" aria-label="Add 1 minute">
+              <Plus className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
-            <button onClick={timerNextLevel} className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400" title="Next level">
-              <SkipForward className="w-4 h-4" />
+            <button onClick={timerNextLevel} className="p-2.5 sm:p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400" title="Next level" aria-label="Next level">
+              <SkipForward className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
           </div>
           <button onClick={timerResetLevel} className="text-xs text-gray-500 hover:text-gray-400 flex items-center justify-center gap-1">
@@ -664,13 +665,13 @@ export function TournamentPage() {
         </div>
 
         {/* Right: Tables */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col lg:overflow-hidden">
           {/* Balance Alert */}
           {balanceSuggestion && (
-            <div className="mx-6 mt-4 p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-xl flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0" />
-                <p className="text-sm text-yellow-300">
+            <div className="mx-4 sm:mx-6 mt-4 p-3 sm:p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs sm:text-sm text-yellow-300">
                   Tables unbalanced! Move <strong>{balanceSuggestion.playerName}</strong> from Table{' '}
                   {balanceSuggestion.fromTableNumber} to Table {balanceSuggestion.toTableNumber} (seat{' '}
                   {balanceSuggestion.suggestedSeat}).
@@ -685,7 +686,7 @@ export function TournamentPage() {
                   );
                   await checkBalance();
                 }}
-                className="px-4 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-xs font-medium flex items-center gap-1 flex-shrink-0"
+                className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1 flex-shrink-0 self-end sm:self-center"
               >
                 <ArrowRightLeft className="w-3 h-3" /> Move
               </button>
@@ -693,8 +694,8 @@ export function TournamentPage() {
           )}
 
           {/* Table Grid */}
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className={`grid gap-6 ${(tournament.tables?.length || 0) > 2 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6">
+            <div className={`grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 ${(tournament.tables?.length || 0) > 2 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
               {tournament.tables?.map((table) => {
                 const seated = table.entries?.filter((e) => e.status === 'SEATED') || [];
                 return (
@@ -752,12 +753,12 @@ export function TournamentPage() {
           </div>
 
           {/* Action Bar */}
-          <div className="border-t border-gray-800 bg-gray-900 p-4 flex items-center gap-3">
-            <div className="flex items-center gap-2">
+          <div className="border-t border-gray-800 bg-gray-900 p-3 sm:p-4 flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <select
                 value={selectedLateBuyInPlayerId}
                 onChange={(e) => setSelectedLateBuyInPlayerId(e.target.value)}
-                className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-felt min-w-[180px]"
+                className="flex-1 sm:flex-none px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-felt min-w-0 sm:min-w-[180px]"
               >
                 <option value="">Late buy-in player...</option>
                 {lateBuyInCandidates.map((p) => (
@@ -769,25 +770,25 @@ export function TournamentPage() {
               <button
                 onClick={handleLateBuyIn}
                 disabled={!selectedLateBuyInPlayerId}
-                className="px-4 py-2 bg-felt hover:bg-felt-dark disabled:opacity-50 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+                className="px-3 sm:px-4 py-2 bg-felt hover:bg-felt-dark disabled:opacity-50 text-white rounded-lg text-sm font-medium flex items-center gap-2 flex-shrink-0"
               >
-                <Plus className="w-4 h-4" /> Buy-in Now
+                <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Buy-in Now</span><span className="sm:hidden">Buy-in</span>
               </button>
             </div>
 
-            <div className="h-8 w-px bg-gray-700" />
+            <div className="hidden sm:block h-8 w-px bg-gray-700" />
             <button
               onClick={handleAddTable}
               disabled={isAddingTable}
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+              className="px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium flex items-center gap-2"
             >
               <Plus className="w-4 h-4" /> {isAddingTable ? 'Adding...' : 'Add Table'}
             </button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <select
                 value={manualSeatPlayerId}
                 onChange={(e) => setManualSeatPlayerId(e.target.value)}
-                className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-felt min-w-[180px]"
+                className="flex-1 sm:flex-none px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-felt min-w-0 sm:min-w-[180px]"
               >
                 <option value="">Manual seat buy-in...</option>
                 {lateBuyInCandidates.map((p) => (
@@ -800,33 +801,33 @@ export function TournamentPage() {
             <button
               onClick={handleMinimalBalance}
               disabled={isBalancing}
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+              className="px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium flex items-center gap-2"
             >
-              <ArrowRightLeft className="w-4 h-4" /> {isBalancing ? 'Balancing...' : 'Balance (Minimal Moves)'}
+              <ArrowRightLeft className="w-4 h-4" /> <span className="hidden sm:inline">{isBalancing ? 'Balancing...' : 'Balance (Minimal Moves)'}</span><span className="sm:hidden">{isBalancing ? 'Balancing...' : 'Balance'}</span>
             </button>
             <button
               onClick={() => { setShowRebuy(!showRebuy); setShowTopUp(false); setShowEliminate(false); }}
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+              className="px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium flex items-center gap-2"
             >
               <DollarSign className="w-4 h-4" /> Rebuy
             </button>
             <button
               onClick={() => { setShowTopUp(!showTopUp); setShowRebuy(false); setShowEliminate(false); }}
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+              className="px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium flex items-center gap-2"
             >
               <Plus className="w-4 h-4" /> Top-up
             </button>
             <button
               onClick={() => { setShowEliminate(!showEliminate); setShowRebuy(false); setShowTopUp(false); }}
-              className="px-4 py-2 bg-red-900/50 hover:bg-red-900/80 text-red-300 rounded-lg text-sm font-medium flex items-center gap-2"
+              className="px-3 sm:px-4 py-2 bg-red-900/50 hover:bg-red-900/80 text-red-300 rounded-lg text-sm font-medium flex items-center gap-2"
             >
               <UserX className="w-4 h-4" /> Eliminate
             </button>
-            <div className="flex-1" />
+            <div className="hidden sm:block flex-1" />
             {!isFinished && (
               <button
                 onClick={handleFinish}
-                className="px-6 py-2 bg-gold hover:bg-gold-light text-gray-900 rounded-lg font-bold text-sm flex items-center gap-2"
+                className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-gold hover:bg-gold-light text-gray-900 rounded-lg font-bold text-sm flex items-center justify-center gap-2"
               >
                 <Trophy className="w-4 h-4" /> End Tournament
               </button>
@@ -885,15 +886,15 @@ export function TournamentPage() {
           )}
 
           {/* Quick Player Actions */}
-          <div className="border-t border-gray-800 bg-gray-950 p-4">
+          <div className="border-t border-gray-800 bg-gray-950 p-3 sm:p-4">
             <p className="text-xs text-gray-400 mb-2">Quick player actions</p>
             <div className="flex flex-wrap gap-2">
               {activePlayers.map((e) => (
                 <div key={`quick-${e.playerId}`} className="flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-2 py-1.5">
-                  <span className="text-xs text-white min-w-[110px] truncate">{e.player?.name}</span>
+                  <span className="text-xs text-white min-w-[80px] sm:min-w-[110px] max-w-[140px] truncate">{e.player?.name}</span>
                   <button
                     onClick={() => handleRebuyClick(e.playerId)}
-                    className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs"
+                    className="px-2 py-1.5 sm:py-1 bg-gray-800 hover:bg-gray-700 text-white rounded text-xs"
                   >
                     Rebuy
                   </button>
@@ -902,19 +903,21 @@ export function TournamentPage() {
                       await recordTopUp(e.playerId);
                     }}
                     disabled={playersWithTopUp.has(e.playerId)}
-                    className={`px-2 py-1 rounded text-xs ${
+                    className={`px-2 py-1.5 sm:py-1 rounded text-xs ${
                       playersWithTopUp.has(e.playerId)
                         ? 'bg-gray-800 text-gray-600 cursor-not-allowed opacity-50'
                         : 'bg-gray-800 hover:bg-gray-700 text-white'
                     }`}
                   >
-                    Top-up{playersWithTopUp.has(e.playerId) ? ' (done)' : ` (+${tournament.topUpChips})`}
+                    <span className="hidden sm:inline">Top-up{playersWithTopUp.has(e.playerId) ? ' (done)' : ` (+${tournament.topUpChips})`}</span>
+                    <span className="sm:hidden">Top-up{playersWithTopUp.has(e.playerId) ? '✓' : ''}</span>
                   </button>
                   <button
                     onClick={() => setEliminateConfirm({ playerId: e.playerId, name: e.player?.name || `Player #${e.playerId}` })}
-                    className="px-2 py-1 bg-red-900/40 hover:bg-red-900/70 text-red-300 rounded text-xs"
+                    className="px-2 py-1.5 sm:py-1 bg-red-900/40 hover:bg-red-900/70 text-red-300 rounded text-xs"
                   >
-                    Eliminate
+                    <span className="hidden sm:inline">Eliminate</span>
+                    <span className="sm:hidden">Out</span>
                   </button>
                 </div>
               ))}
@@ -922,7 +925,7 @@ export function TournamentPage() {
           </div>
 
           {/* Action Log */}
-          <div className="border-t border-gray-800 bg-gray-900 p-4 max-h-52 overflow-y-auto">
+          <div className="border-t border-gray-800 bg-gray-900 p-3 sm:p-4 max-h-52 overflow-y-auto">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Action Log</p>
             {(tournament.transactions || []).length === 0 ? (
               <p className="text-xs text-gray-500">No actions yet.</p>
@@ -965,10 +968,11 @@ export function TournamentPage() {
                                 await undoTransaction(tx.id);
                               }
                             }}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-600 hover:text-red-400 transition-all rounded flex-shrink-0"
+                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 transition-all rounded flex-shrink-0"
                             title={`Undo ${typeLabel[tx.type]}`}
+                            aria-label={`Undo ${typeLabel[tx.type]}`}
                           >
-                            <Undo2 className="w-3 h-3" />
+                            <Undo2 className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
                           </button>
                         )}
                         {!canUndo && <div className="w-5 flex-shrink-0" />}

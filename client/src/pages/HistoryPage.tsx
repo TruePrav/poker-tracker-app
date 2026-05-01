@@ -19,8 +19,8 @@ export function HistoryPage() {
   const finished = tournaments.filter((t) => t.status === 'FINISHED');
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-white mb-6">Tournament History</h1>
+    <div className="p-4 sm:p-6 md:p-8 max-w-4xl mx-auto">
+      <h1 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">Tournament History</h1>
 
       {loading && <p className="text-gray-400">Loading...</p>}
 
@@ -43,15 +43,15 @@ export function HistoryPage() {
             <Link
               key={t.id}
               to={`/tournament/${t.id}`}
-              className="flex items-center justify-between p-5 bg-gray-900 border border-gray-800 rounded-xl hover:border-gray-700 transition-colors"
+              className="flex items-center justify-between gap-3 p-3 sm:p-5 bg-gray-900 border border-gray-800 rounded-xl hover:border-gray-700 active:border-gray-700 transition-colors"
             >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center">
-                  <Trophy className="w-5 h-5 text-gold" />
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gray-800 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-gold" />
                 </div>
-                <div>
-                  <p className="font-semibold text-white">{t.name}</p>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-white text-sm sm:text-base truncate">{t.name}</p>
+                  <div className="flex items-center gap-2 sm:gap-3 mt-0.5 sm:mt-1 text-[11px] sm:text-xs text-gray-400">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       {new Date(t.date).toLocaleDateString()}
@@ -63,10 +63,10 @@ export function HistoryPage() {
                   </div>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="font-bold text-gold">{formatCurrencyShort(t.totalPrizePool)}</p>
+              <div className="text-right flex-shrink-0">
+                <p className="font-bold text-gold text-sm sm:text-base">{formatCurrencyShort(t.totalPrizePool)}</p>
                 {winner && (
-                  <p className="text-xs text-gray-400 mt-1">Winner: {winner.player?.name}</p>
+                  <p className="text-[11px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1 truncate max-w-[120px]">Winner: {winner.player?.name}</p>
                 )}
               </div>
             </Link>
