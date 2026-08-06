@@ -4,23 +4,29 @@ const { Pool } = pg;
 
 let pool: pg.Pool | null = null;
 
-function getConnectionString() {
+function getConnectionConfig() {
   const connectionString = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL;
   if (!connectionString) {
     throw new Error('DATABASE_URL (or SUPABASE_DB_URL) is required.');
   }
   const parsed = new URL(connectionString);
-  // Force TLS behavior from the pg client config below instead of URL params.
+  const sslmode = parsed.searchParams.get('sslmode');
+  // Handle TLS from the pg client config below instead of URL params.
   parsed.searchParams.delete('sslmode');
-  return parsed.toString();
+
+  // Local databases (or explicit sslmode=disable) don't speak TLS;
+  // remote ones (Supabase) need TLS without CA verification.
+  const host = parsed.hostname;
+  const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '';
+  const ssl: false | { rejectUnauthorized: boolean } =
+    sslmode === 'disable' || isLocal ? false : { rejectUnauthorized: false };
+
+  return { connectionString: parsed.toString(), ssl };
 }
 
 export function getPool() {
   if (!pool) {
-    pool = new Pool({
-      connectionString: getConnectionString(),
-      ssl: { rejectUnauthorized: false },
-    });
+    pool = new Pool(getConnectionConfig());
   }
   return pool;
 }
