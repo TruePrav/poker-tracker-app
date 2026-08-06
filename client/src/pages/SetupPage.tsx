@@ -46,6 +46,7 @@ export function SetupPage() {
   const [buyIn, setBuyIn] = useState('20');
   const [topUp, setTopUp] = useState('10');
   const [startingChips, setStartingChips] = useState('10000');
+  const [topUpChips, setTopUpChips] = useState('5000');
   const [selectedStructureId, setSelectedStructureId] = useState<number | null>(null);
 
   // Custom blind structure editor
@@ -86,6 +87,7 @@ export function SetupPage() {
       setBuyIn(String(tournament.buyInAmount / 100));
       setTopUp(String(tournament.topUpAmount / 100));
       setStartingChips(String(tournament.startingChips));
+      setTopUpChips(String(tournament.topUpChips || 0));
       setSelectedStructureId(tournament.blindStructureId);
       setBuyInType((tournament.buyInType as 'FIXED' | 'VARIABLE') || 'FIXED');
       const presets: number[] = JSON.parse(tournament.buyInPresets || '[]');
@@ -105,6 +107,7 @@ export function SetupPage() {
       name: name || `Game - ${today}`,
       buyInAmount: Math.round(parseFloat(buyIn || '0') * 100),
       topUpAmount: Math.round(parseFloat(topUp || '0') * 100),
+      topUpChips: parseInt(topUpChips) || 0,
       startingChips: parseInt(startingChips) || 10000,
       blindStructureId: selectedStructureId || undefined,
       buyInType,
@@ -295,7 +298,7 @@ export function SetupPage() {
                 className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-felt"
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Buy-in (BBD $)</label>
                 <input
@@ -304,7 +307,7 @@ export function SetupPage() {
                   onChange={(e) => setBuyIn(e.target.value)}
                   min="0"
                   step="0.01"
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-felt"
+                  className="w-full px-3 sm:px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-felt"
                 />
               </div>
               <div>
@@ -315,7 +318,7 @@ export function SetupPage() {
                   onChange={(e) => setTopUp(e.target.value)}
                   min="0"
                   step="0.01"
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-felt"
+                  className="w-full px-3 sm:px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-felt"
                 />
               </div>
               <div>
@@ -326,7 +329,18 @@ export function SetupPage() {
                   onChange={(e) => setStartingChips(e.target.value)}
                   min="1000"
                   step="1000"
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-felt"
+                  className="w-full px-3 sm:px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-felt"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Top-up Chips</label>
+                <input
+                  type="number"
+                  value={topUpChips}
+                  onChange={(e) => setTopUpChips(e.target.value)}
+                  min="0"
+                  step="500"
+                  className="w-full px-3 sm:px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-felt"
                 />
               </div>
             </div>
