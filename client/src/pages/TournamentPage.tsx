@@ -1086,6 +1086,10 @@ export function TournamentPage() {
             const allPayoutPlayers = activePlayers;
             const chipSum = allPayoutPlayers.reduce((sum, e) => sum + (parseInt(chipCounts[e.playerId] || '0') || 0), 0);
             const chipsMatch = chipSum === totalChips;
+            // Quick-split presets pay the chip leader the biggest share
+            const rankedPayoutPlayers = [...allPayoutPlayers].sort(
+              (a, b) => (parseInt(chipCounts[b.playerId] || '0') || 0) - (parseInt(chipCounts[a.playerId] || '0') || 0)
+            );
 
             return (
             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
@@ -1164,8 +1168,8 @@ export function TournamentPage() {
                             onClick={() => {
                               const amounts: Record<number, string> = {};
                               preset.splits.forEach((pct, i) => {
-                                if (allPayoutPlayers[i]) {
-                                  amounts[allPayoutPlayers[i].playerId] = ((tournament.totalPrizePool * pct) / 100 / 100).toFixed(2);
+                                if (rankedPayoutPlayers[i]) {
+                                  amounts[rankedPayoutPlayers[i].playerId] = ((tournament.totalPrizePool * pct) / 100 / 100).toFixed(2);
                                 }
                               });
                               setPayoutAmounts(amounts);
@@ -1190,8 +1194,8 @@ export function TournamentPage() {
                             onClick={() => {
                               const amounts: Record<number, string> = {};
                               preset.splits.forEach((pct, i) => {
-                                if (allPayoutPlayers[i]) {
-                                  amounts[allPayoutPlayers[i].playerId] = ((tournament.totalPrizePool * pct) / 100 / 100).toFixed(2);
+                                if (rankedPayoutPlayers[i]) {
+                                  amounts[rankedPayoutPlayers[i].playerId] = ((tournament.totalPrizePool * pct) / 100 / 100).toFixed(2);
                                 }
                               });
                               setPayoutAmounts(amounts);
