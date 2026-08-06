@@ -163,7 +163,7 @@ transactionRoutes.delete('/:id/transactions/:txId', async (req, res, next) => {
       await client.query(`DELETE FROM "Transaction" WHERE "id" = $1`, [txId]);
 
       // Reverse prize pool impact for money-in transactions
-      let totalPrizePool = 0;
+      let totalPrizePool: number;
       if (['BUY_IN', 'REBUY', 'TOP_UP'].includes(tx.type)) {
         const prizeRows = await client.query(
           `UPDATE "Tournament"
@@ -173,6 +173,13 @@ transactionRoutes.delete('/:id/transactions/:txId', async (req, res, next) => {
           [tx.amount, new Date(), tournamentId]
         );
         totalPrizePool = prizeRows.rows[0]?.totalPrizePool ?? 0;
+      } else {
+        // Non money-in types (e.g. PAYOUT) leave the pool untouched — return the current value
+        const poolRows = await client.query(
+          'SELECT "totalPrizePool" FROM "Tournament" WHERE "id" = $1 LIMIT 1',
+          [tournamentId]
+        );
+        totalPrizePool = poolRows.rows[0]?.totalPrizePool ?? 0;
       }
 
       return { deletedId: txId, type: tx.type, totalPrizePool };
