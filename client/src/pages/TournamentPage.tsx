@@ -443,7 +443,7 @@ export function TournamentPage() {
   ]);
 
   if (!tournament) {
-    return <div className="p-8 text-gray-400">Loading tournament...</div>;
+    return <div className="p-4 sm:p-8 text-gray-400">Loading tournament...</div>;
   }
 
   return (
@@ -1033,7 +1033,7 @@ export function TournamentPage() {
           {/* Eliminate Confirmation Modal */}
           {eliminateConfirm && (
             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-              <div className="bg-gray-900 border border-red-800/60 rounded-2xl p-8 max-w-sm w-full mx-4">
+              <div className="bg-gray-900 border border-red-800/60 rounded-2xl p-6 sm:p-8 max-w-sm w-full mx-4">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-full bg-red-900/50 flex items-center justify-center flex-shrink-0">
                     <UserX className="w-5 h-5 text-red-400" />
@@ -1093,7 +1093,7 @@ export function TournamentPage() {
 
             return (
             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-              <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="bg-gray-900 border border-gray-700 rounded-2xl p-5 sm:p-8 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
                 <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                   <Trophy className="w-5 h-5 text-gold" /> {payoutStep === 1 ? 'Step 1: Chip Count' : 'Step 2: Payouts'}
                 </h2>
@@ -1110,12 +1110,12 @@ export function TournamentPage() {
                     <div className="space-y-2 mb-4">
                       {allPayoutPlayers.map((e) => (
                         <div key={e.playerId} className="flex items-center gap-3">
-                          <span className="flex-1 text-sm text-white">{e.player?.name}</span>
+                          <span className="flex-1 min-w-0 text-sm text-white truncate">{e.player?.name}</span>
                           <input
                             type="number"
                             value={chipCounts[e.playerId] || ''}
                             onChange={(ev) => setChipCounts((prev) => ({ ...prev, [e.playerId]: ev.target.value }))}
-                            className="w-28 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm text-right focus:outline-none focus:border-felt"
+                            className="w-24 sm:w-28 flex-shrink-0 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm text-right focus:outline-none focus:border-felt"
                             placeholder="0"
                           />
                         </div>
@@ -1213,16 +1213,18 @@ export function TournamentPage() {
                         const chips = parseInt(chipCounts[e.playerId] || '0') || 0;
                         const pct = chipSum > 0 ? ((chips / chipSum) * 100).toFixed(1) : '0.0';
                         return (
-                        <div key={e.playerId} className="flex items-center gap-3">
-                          <span className="flex-1 text-sm font-medium text-white">{e.player?.name}</span>
-                          <span className="text-xs text-gray-500">{chips.toLocaleString()} chips ({pct}%)</span>
-                          <div className="flex items-center gap-1">
+                        <div key={e.playerId} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                          <div className="flex-1 min-w-0 flex items-baseline gap-2">
+                            <span className="text-sm font-medium text-white truncate">{e.player?.name}</span>
+                            <span className="text-xs text-gray-500 flex-shrink-0">{chips.toLocaleString()} chips ({pct}%)</span>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
                             <span className="text-xs text-gray-500">$</span>
                             <input
                               type="number"
                               value={payoutAmounts[e.playerId] || ''}
                               onChange={(ev) => setPayoutAmounts((prev) => ({ ...prev, [e.playerId]: ev.target.value }))}
-                              className="w-24 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm text-right focus:outline-none focus:border-felt"
+                              className="flex-1 sm:flex-none w-full sm:w-24 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm text-right focus:outline-none focus:border-felt"
                               placeholder="0.00"
                             />
                           </div>
