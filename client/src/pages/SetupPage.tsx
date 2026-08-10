@@ -489,8 +489,9 @@ export function SetupPage() {
                   />
                 </div>
 
-                {/* Levels Table */}
-                <div className="mb-3">
+                {/* Levels Table — scrolls sideways on phones so the number inputs stay legible */}
+                <div className="mb-3 overflow-x-auto no-scrollbar">
+                  <div className="min-w-[420px]">
                   <div className="grid grid-cols-[40px_1fr_1fr_1fr_1fr_32px] gap-2 mb-2 text-xs text-gray-500 font-medium px-1">
                     <span>#</span>
                     <span>Small</span>
@@ -562,6 +563,7 @@ export function SetupPage() {
                         </button>
                       </div>
                     ))}
+                  </div>
                   </div>
                 </div>
 
