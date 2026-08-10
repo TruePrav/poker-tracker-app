@@ -199,6 +199,9 @@ export function BlindStructuresPage() {
             />
           </div>
 
+          {/* Levels table — scrolls sideways on phones so the number inputs stay legible */}
+          <div className="overflow-x-auto no-scrollbar mb-4">
+          <div className="min-w-[420px]">
           <div className="grid grid-cols-[40px_1fr_1fr_1fr_1fr_32px] gap-2 mb-2 text-xs text-gray-500 font-medium px-1">
             <span>#</span>
             <span>Small</span>
@@ -207,7 +210,7 @@ export function BlindStructuresPage() {
             <span>Mins</span>
             <span />
           </div>
-          <div className="space-y-1.5 max-h-[46vh] overflow-y-auto mb-4">
+          <div className="space-y-1.5 max-h-[46vh] overflow-y-auto">
             {levels.map((level, i) => (
               <div key={i} className={`grid grid-cols-[40px_1fr_1fr_1fr_1fr_32px] gap-2 items-center ${level.isBreak ? 'bg-yellow-900/10 rounded-lg p-1' : ''}`}>
                 <span className="text-xs text-gray-500 text-center">{i + 1}</span>
@@ -263,6 +266,8 @@ export function BlindStructuresPage() {
                 </button>
               </div>
             ))}
+          </div>
+          </div>
           </div>
 
           <div className="flex items-center gap-2 mb-4">
