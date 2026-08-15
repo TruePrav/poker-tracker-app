@@ -9,7 +9,7 @@ import { fetchTournament } from '../api/tournaments';
 import { fetchPendingAnnouncements, markAnnouncementPlayed } from '../api/announcements';
 import { AnnouncerSettings } from '../components/AnnouncerSettings';
 import { speak, playClip, armAudio, clipSrc, CLIPS, getSettings, saveSettings } from '../utils/announcer';
-import { getScripts, renderTemplate } from '../utils/announcementScripts';
+import { getScripts, renderTemplate, getRebuysCloseAfterLevel } from '../utils/announcementScripts';
 
 const ANNOUNCEMENT_POLL_MS = 3000;
 const STATE_POLL_MS = 7000;
@@ -41,6 +41,7 @@ export function FullScreenTimerPage() {
   const timerSeededForRef = useRef<number | null>(null);
   const prevLevelRef = useRef<number | null>(null);
   const prevStatusRef = useRef<string | null>(null);
+  const rebuysClosedRef = useRef(false);
   const handledAnnouncementsRef = useRef<Set<number>>(new Set());
 
   const [showSettings, setShowSettings] = useState(false);
@@ -118,6 +119,13 @@ export function FullScreenTimerPage() {
           ante: level.ante,
         })
       );
+    }
+
+    // Rebuys close once a set level finishes (level 6 on tonight's ladder).
+    const closeAfter = getRebuysCloseAfterLevel();
+    if (closeAfter > 0 && prev <= closeAfter && currentLevel > closeAfter && !rebuysClosedRef.current) {
+      rebuysClosedRef.current = true;
+      speak(scripts.buyinsClosed);
     }
   }, [currentLevel, blindLevels]);
 
