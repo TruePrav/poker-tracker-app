@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Coffee, Edit2, Plus, Save, Trash2, X, Sparkles } from 'lucide-react';
-import { BLIND_PRESETS, type PresetFactory } from '../utils/blindPresets';
+import { BLIND_PRESETS, describeTiming, type PresetFactory } from '../utils/blindPresets';
 import type { BlindStructure } from 'shared';
 import {
   fetchBlindStructures,
@@ -35,7 +35,6 @@ export function BlindStructuresPage() {
   const [name, setName] = useState('');
   const [levels, setLevels] = useState<EditableLevel[]>([{ ...emptyLevel }]);
   const [importing, setImporting] = useState(false);
-  const [presetMinutes, setPresetMinutes] = useState(15);
   const [presetMessage, setPresetMessage] = useState('');
 
   async function importPreset(makePreset: PresetFactory) {
@@ -43,11 +42,11 @@ export function BlindStructuresPage() {
     setImporting(true);
     setPresetMessage('');
     try {
-      const preset = makePreset(presetMinutes);
+      const preset = makePreset();
       const created = await createBlindStructure(preset.name, preset.levels);
       await loadAll();
       setSelectedId(created.id);
-      setPresetMessage(`Saved "${preset.name}" — ${preset.levels.length} levels at ${presetMinutes} min`);
+      setPresetMessage(`Saved "${preset.name}" — ${preset.levels.length} levels, ${describeTiming(preset)}`);
       setTimeout(() => setPresetMessage(''), 6000);
     } catch (err: any) {
       // Surface the real reason; a generic message makes this impossible to
@@ -184,32 +183,24 @@ export function BlindStructuresPage() {
       <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-2">
         <span className="text-xs text-gray-500">Quick add:</span>
         {BLIND_PRESETS.map((makePreset) => {
-          const preset = makePreset(presetMinutes);
+          const preset = makePreset();
           const already = structures.some((s) => s.name === preset.name);
           return (
             <button
               key={preset.name}
               onClick={() => importPreset(makePreset)}
               disabled={importing}
-              className="px-3 py-2 bg-gold hover:bg-gold-light disabled:opacity-50 text-gray-900 rounded-lg text-xs font-bold flex items-center gap-1.5"
+              className="px-3 py-2 bg-gold hover:bg-gold-light disabled:opacity-50 text-gray-900 rounded-lg text-xs font-bold flex flex-col items-start gap-0.5"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              {importing ? 'Adding...' : `${preset.name} (${preset.levels.length} levels)`}
-              {already && <span className="font-normal">— add again</span>}
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
+                {importing ? 'Adding...' : `${preset.name} (${preset.levels.length} levels)`}
+                {already && <span className="font-normal">— add again</span>}
+              </span>
+              <span className="font-normal opacity-80">{describeTiming(preset)}</span>
             </button>
           );
         })}
-        <label className="flex items-center gap-1.5 text-xs text-gray-400">
-          minutes/level
-          <input
-            type="number"
-            min="1"
-            max="60"
-            value={presetMinutes}
-            onChange={(e) => setPresetMinutes(Number(e.target.value) || 15)}
-            className="w-16 px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-white text-xs text-center focus:outline-none focus:border-felt"
-          />
-        </label>
         {presetMessage && <span className="text-xs text-felt font-medium">{presetMessage}</span>}
       </div>
 

@@ -27,32 +27,54 @@ const L = (smallBlind: number, bigBlind: number, durationMinutes: number): Prese
   isBreak: false,
 });
 
-/** Tonight's structure. Durations default to 15 min and are editable after import. */
-export function assBumpBlinds(minutes = 15): BlindPreset {
+/**
+ * Tonight's structure: slower early levels to give people time to arrive and
+ * settle, then a faster clip once rebuys close. Durations stay editable in the
+ * level editor after importing.
+ *
+ * Levels 1-5 run 20 minutes, levels 6-14 run 15 — 3 hours 55 minutes of play.
+ */
+const EARLY_MINUTES = 20;
+const LATE_MINUTES = 15;
+const EARLY_LEVEL_COUNT = 5;
+
+export function assBumpBlinds(): BlindPreset {
+  const blinds: Array<[number, number]> = [
+    [5, 10],
+    [10, 20],
+    [15, 30],
+    [20, 40],
+    [25, 50],
+    [50, 100],
+    // — rebuys close after level 6 —
+    [75, 150],
+    [100, 200],
+    [150, 300],
+    [250, 500],
+    [350, 700],
+    [500, 1000],
+    [750, 1500],
+    [1000, 2000],
+  ];
+
   return {
     name: 'ASS BUMP BLINDS',
     rebuysCloseAfterLevel: 6,
-    defaultMinutes: minutes,
-    levels: [
-      L(5, 10, minutes),
-      L(10, 20, minutes),
-      L(15, 30, minutes),
-      L(20, 40, minutes),
-      L(25, 50, minutes),
-      L(50, 100, minutes),
-      // — rebuys close after level 6 —
-      L(75, 150, minutes),
-      L(100, 200, minutes),
-      L(150, 300, minutes),
-      L(250, 500, minutes),
-      L(350, 700, minutes),
-      L(500, 1000, minutes),
-      L(750, 1500, minutes),
-      L(1000, 2000, minutes),
-    ],
+    defaultMinutes: LATE_MINUTES,
+    levels: blinds.map(([small, big], i) =>
+      L(small, big, i < EARLY_LEVEL_COUNT ? EARLY_MINUTES : LATE_MINUTES)
+    ),
   };
 }
 
-export type PresetFactory = (minutes?: number) => BlindPreset;
+/** Human-readable timing summary for the import button. */
+export function describeTiming(preset: BlindPreset): string {
+  const total = preset.levels.reduce((sum, l) => sum + l.durationMinutes, 0);
+  const hours = Math.floor(total / 60);
+  const mins = total % 60;
+  return `${EARLY_LEVEL_COUNT}×${EARLY_MINUTES}min then ${LATE_MINUTES}min · ${hours}h ${mins}m total`;
+}
+
+export type PresetFactory = () => BlindPreset;
 
 export const BLIND_PRESETS: PresetFactory[] = [assBumpBlinds];
