@@ -543,16 +543,7 @@ export function RulesPage() {
                 </tr>
                 <tr>
                   <td>
-                    Second buy-in<span className="chips">1,500 chips</span>
-                  </td>
-                  <td className="amount-lead">$100</td>
-                  <td>$100</td>
-                  <td className="nil">$0</td>
-                  <td className="nil">$0</td>
-                </tr>
-                <tr>
-                  <td>
-                    Third and beyond<span className="chips">1,500 chips</span>
+                    Second and beyond<span className="chips">1,500 chips</span>
                   </td>
                   <td className="amount-lead">$60</td>
                   <td>$60</td>
@@ -686,8 +677,7 @@ export function RulesPage() {
                 <span className="tag tag-drink">Drink</span>
               </div>
               <p>
-                Every time you buy back in, you drink. Once you are into $60 territory, third bullet and beyond, make it
-                a shot.
+                Every time you buy back in, you drink. Your third bullet and every one after is a shot.
               </p>
             </div>
 
