@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Volume2, X, Play, RotateCcw } from 'lucide-react';
+import { Volume2, X, Play, RotateCcw, Info } from 'lucide-react';
 import {
   loadVoices,
   rankVoices,
+  isIndianVoice,
+  isNeuralVoice,
   getSettings,
   saveSettings,
   speak,
@@ -27,6 +29,7 @@ export function AnnouncerSettings({ onClose }: Props) {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [settings, setSettings] = useState(getSettings());
   const [scripts, setScripts] = useState(getScripts());
+  const [showVoiceHelp, setShowVoiceHelp] = useState(false);
 
   useEffect(() => {
     loadVoices().then((v) => setVoices(rankVoices(v)));
@@ -44,7 +47,8 @@ export function AnnouncerSettings({ onClose }: Props) {
     saveScripts(patch);
   };
 
-  const indianVoices = voices.filter((v) => (v.lang || '').toLowerCase().replace('_', '-').startsWith('en-in'));
+  const indianVoices = voices.filter(isIndianVoice);
+  const otherVoices = voices.filter((v) => !isIndianVoice(v));
 
   return (
     <div className="fixed inset-0 bg-black/80 z-[60] flex items-start sm:items-center justify-center overflow-y-auto p-4">
@@ -73,8 +77,8 @@ export function AnnouncerSettings({ onClose }: Props) {
         <div className="mb-4">
           <label className="block text-xs font-medium text-gray-400 mb-1">
             Voice {indianVoices.length > 0
-              ? `— ${indianVoices.length} Indian English voice${indianVoices.length > 1 ? 's' : ''} found`
-              : '— no en-IN voice on this device, best available listed first'}
+              ? `— ${indianVoices.length} Indian voice${indianVoices.length > 1 ? 's' : ''} found on this device`
+              : '— no Indian voice found, best available listed first'}
           </label>
           <select
             value={settings.voiceURI || ''}
@@ -82,16 +86,57 @@ export function AnnouncerSettings({ onClose }: Props) {
             className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-felt"
           >
             <option value="">Auto (best Indian voice available)</option>
-            {voices.map((v) => (
-              <option key={v.voiceURI} value={v.voiceURI}>
-                {v.name} — {v.lang}
-              </option>
-            ))}
+            {indianVoices.length > 0 && (
+              <optgroup label="🇮🇳 Indian voices">
+                {indianVoices.map((v) => (
+                  <option key={v.voiceURI} value={v.voiceURI}>
+                    {isNeuralVoice(v) ? '⭐ ' : ''}{v.name} — {v.lang}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {otherVoices.length > 0 && (
+              <optgroup label="Other voices">
+                {otherVoices.map((v) => (
+                  <option key={v.voiceURI} value={v.voiceURI}>
+                    {v.name} — {v.lang}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
           {voices.length === 0 && (
             <p className="text-[11px] text-yellow-400 mt-1">
               No voices detected yet. Reload the page once; some browsers load them lazily.
             </p>
+          )}
+          <button
+            onClick={() => setShowVoiceHelp((v) => !v)}
+            className="mt-2 text-[11px] text-felt hover:underline flex items-center gap-1"
+          >
+            <Info className="w-3 h-3" /> {showVoiceHelp ? 'Hide' : 'Want more Indian voices?'}
+          </button>
+          {showVoiceHelp && (
+            <div className="mt-2 p-3 bg-gray-800/70 border border-gray-700 rounded-lg text-[11px] text-gray-300 space-y-2">
+              <p className="text-white font-semibold">Fastest win: open this page in Microsoft Edge</p>
+              <p>
+                Edge exposes free Azure neural voices to web pages. You get{' '}
+                <span className="text-felt">Microsoft Neerja Online (Natural)</span> and{' '}
+                <span className="text-felt">Prabhat Online (Natural)</span> — proper Indian English,
+                far better than the built-in ones. No signup, no API key. They show with a ⭐ above.
+              </p>
+              <p className="text-white font-semibold pt-1">Or install more voices in the OS</p>
+              <p>
+                <span className="text-gray-100">macOS:</span> System Settings → Accessibility → Spoken
+                Content → System Voice → Manage Voices → English (India) → add <em>Rishi</em>.
+              </p>
+              <p>
+                <span className="text-gray-100">Windows:</span> Settings → Time &amp; Language → Speech →
+                Manage voices → Add voices → English (India) → gives <em>Heera</em>, <em>Ravi</em>,{' '}
+                <em>Priya</em>.
+              </p>
+              <p className="text-gray-500 pt-1">Reload this page after installing so they appear.</p>
+            </div>
           )}
         </div>
 
