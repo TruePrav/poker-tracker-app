@@ -49,8 +49,18 @@ export function BlindStructuresPage() {
       setSelectedId(created.id);
       setPresetMessage(`Saved "${preset.name}" — ${preset.levels.length} levels at ${presetMinutes} min`);
       setTimeout(() => setPresetMessage(''), 6000);
-    } catch {
-      setPresetMessage('Failed to save — check connection');
+    } catch (err: any) {
+      // Surface the real reason; a generic message makes this impossible to
+      // debug at the table.
+      const status = err?.response?.status;
+      const serverMsg = err?.response?.data?.error;
+      setPresetMessage(
+        serverMsg
+          ? `Failed (${status}): ${serverMsg}`
+          : status
+          ? `Failed with HTTP ${status} — check /api/health on this deployment`
+          : `Failed: ${err?.message || 'no response'} — check /api/health on this deployment`
+      );
     } finally {
       setImporting(false);
     }
