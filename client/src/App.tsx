@@ -8,12 +8,14 @@ import { PlayerDirectoryPage } from './pages/PlayerDirectoryPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { BlindStructuresPage } from './pages/BlindStructuresPage';
 import { DatabaseAdminPage } from './pages/DatabaseAdminPage';
+import { RulesPage } from './pages/RulesPage';
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/tournament/:id/timer" element={<FullScreenTimerPage />} />
+        <Route path="/rules" element={<RulesPage />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/setup" element={<SetupPage />} />
