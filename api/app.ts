@@ -6,6 +6,7 @@ import { tableRoutes } from './routes/tables';
 import { blindRoutes } from './routes/blinds';
 import { transactionRoutes } from './routes/transactions';
 import { statsRoutes } from './routes/stats';
+import { announcementRoutes } from './routes/announcements';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
@@ -46,6 +47,7 @@ app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/tournaments', tableRoutes);
 app.use('/api/blind-structures', blindRoutes);
 app.use('/api/tournaments', transactionRoutes);
+app.use('/api/tournaments', announcementRoutes);
 app.use('/api/stats', statsRoutes);
 
 // Error handling
