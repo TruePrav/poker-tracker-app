@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Coffee, Edit2, Plus, Save, Trash2, X } from 'lucide-react';
+import { Coffee, Edit2, Plus, Save, Trash2, X, Sparkles } from 'lucide-react';
+import { BLIND_PRESETS, type PresetFactory } from '../utils/blindPresets';
 import type { BlindStructure } from 'shared';
 import {
   fetchBlindStructures,
@@ -33,6 +34,27 @@ export function BlindStructuresPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [levels, setLevels] = useState<EditableLevel[]>([{ ...emptyLevel }]);
+  const [importing, setImporting] = useState(false);
+  const [presetMinutes, setPresetMinutes] = useState(15);
+  const [presetMessage, setPresetMessage] = useState('');
+
+  async function importPreset(makePreset: PresetFactory) {
+    if (importing) return;
+    setImporting(true);
+    setPresetMessage('');
+    try {
+      const preset = makePreset(presetMinutes);
+      const created = await createBlindStructure(preset.name, preset.levels);
+      await loadAll();
+      setSelectedId(created.id);
+      setPresetMessage(`Saved "${preset.name}" — ${preset.levels.length} levels at ${presetMinutes} min`);
+      setTimeout(() => setPresetMessage(''), 6000);
+    } catch {
+      setPresetMessage('Failed to save — check connection');
+    } finally {
+      setImporting(false);
+    }
+  }
 
   async function loadAll() {
     setLoading(true);
@@ -138,7 +160,7 @@ export function BlindStructuresPage() {
 
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
+      <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
         <h1 className="text-xl sm:text-2xl font-bold text-white">Blind Structures</h1>
         <button
           onClick={startNew}
@@ -146,6 +168,39 @@ export function BlindStructuresPage() {
         >
           <Plus className="w-4 h-4" /> <span className="hidden sm:inline">New Structure</span><span className="sm:hidden">New</span>
         </button>
+      </div>
+
+      {/* One-tap presets so a long ladder doesn't have to be typed at the table */}
+      <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-gray-500">Quick add:</span>
+        {BLIND_PRESETS.map((makePreset) => {
+          const preset = makePreset(presetMinutes);
+          const already = structures.some((s) => s.name === preset.name);
+          return (
+            <button
+              key={preset.name}
+              onClick={() => importPreset(makePreset)}
+              disabled={importing}
+              className="px-3 py-2 bg-gold hover:bg-gold-light disabled:opacity-50 text-gray-900 rounded-lg text-xs font-bold flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              {importing ? 'Adding...' : `${preset.name} (${preset.levels.length} levels)`}
+              {already && <span className="font-normal">— add again</span>}
+            </button>
+          );
+        })}
+        <label className="flex items-center gap-1.5 text-xs text-gray-400">
+          minutes/level
+          <input
+            type="number"
+            min="1"
+            max="60"
+            value={presetMinutes}
+            onChange={(e) => setPresetMinutes(Number(e.target.value) || 15)}
+            className="w-16 px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-white text-xs text-center focus:outline-none focus:border-felt"
+          />
+        </label>
+        {presetMessage && <span className="text-xs text-felt font-medium">{presetMessage}</span>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-4 md:gap-6">
