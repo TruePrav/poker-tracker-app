@@ -8,6 +8,7 @@ const INTRO_KEY = 'announcer.script.intro';
 const LEVEL_KEY = 'announcer.script.level';
 const BREAK_KEY = 'announcer.script.break';
 const BUYINS_KEY = 'announcer.script.buyinsClosed';
+const REBUY_LEVEL_KEY = 'announcer.rebuysCloseAfterLevel';
 
 export const DEFAULT_INTRO = [
   'Namaskar, ladies and gentlemen, and welcome to the Mahtani Residence!',
@@ -48,7 +49,20 @@ export function saveScripts(patch: Partial<Scripts>) {
 }
 
 export function resetScripts() {
-  [INTRO_KEY, LEVEL_KEY, BREAK_KEY, BUYINS_KEY].forEach((k) => localStorage.removeItem(k));
+  [INTRO_KEY, LEVEL_KEY, BREAK_KEY, BUYINS_KEY, REBUY_LEVEL_KEY].forEach((k) => localStorage.removeItem(k));
+}
+
+/**
+ * Rebuys/late entry close once this level finishes. Tonight's ASS BUMP ladder
+ * closes them after level 6. Set to 0 to disable the automatic call.
+ */
+export function getRebuysCloseAfterLevel(): number {
+  const raw = localStorage.getItem(REBUY_LEVEL_KEY);
+  return raw === null ? 6 : Number(raw) || 0;
+}
+
+export function setRebuysCloseAfterLevel(level: number) {
+  localStorage.setItem(REBUY_LEVEL_KEY, String(level));
 }
 
 /** Fill {level} / {smallBlind} / {bigBlind} / {ante} placeholders. */
