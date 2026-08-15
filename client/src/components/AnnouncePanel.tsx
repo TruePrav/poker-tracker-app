@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Megaphone, Send, Volume2, DoorClosed, Sparkles } from 'lucide-react';
+import { Megaphone, Send, Volume2, DoorClosed, Sparkles, Speaker } from 'lucide-react';
 import { queueSpeech, queueClip } from '../api/announcements';
 import { getScripts } from '../utils/announcementScripts';
+import { useAnnouncementPlayer } from '../hooks/useAnnouncementPlayer';
+import { armAudio } from '../utils/announcer';
 
 interface Props {
   tournamentId: number;
@@ -12,10 +14,29 @@ interface Props {
  * polls the queue and does the actual speaking, so sound always comes out of
  * the machine plugged into the television.
  */
+const PLAY_HERE_KEY = 'announcer.playOnThisDevice';
+
 export function AnnouncePanel({ tournamentId }: Props) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState('');
+  // Off by default: normally the TV display speaks. Turn on to make this
+  // device the speaker instead (e.g. no second screen, or the TV is muted).
+  const [playHere, setPlayHere] = useState(() => localStorage.getItem(PLAY_HERE_KEY) === 'true');
+  const [armed, setArmed] = useState(false);
+
+  useAnnouncementPlayer(tournamentId, playHere);
+
+  const togglePlayHere = async () => {
+    const next = !playHere;
+    setPlayHere(next);
+    localStorage.setItem(PLAY_HERE_KEY, String(next));
+    if (next && !armed) {
+      // Browsers only unlock audio from a real click, so arm it here.
+      await armAudio();
+      setArmed(true);
+    }
+  };
 
   const confirm = (msg: string) => {
     setFlash(msg);
@@ -44,12 +65,26 @@ export function AnnouncePanel({ tournamentId }: Props) {
 
   return (
     <div className="border-t border-gray-800 bg-gray-950 p-3 sm:p-4">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <p className="text-xs text-gray-400 flex items-center gap-1.5">
-          <Megaphone className="w-3.5 h-3.5" /> Announcements &mdash; plays on the TV
+          <Megaphone className="w-3.5 h-3.5" />
+          Announcements &mdash; {playHere ? 'playing on THIS device' : 'plays on the TV display'}
         </p>
         {flash && <span className="text-[11px] text-felt font-medium">{flash}</span>}
       </div>
+
+      {/* Fallback speaker: if the TV display isn't set up, this device can talk. */}
+      <button
+        onClick={togglePlayHere}
+        className={`mb-2 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 ${
+          playHere
+            ? 'bg-felt text-white'
+            : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+        }`}
+      >
+        <Speaker className="w-3.5 h-3.5" />
+        {playHere ? '🔊 Speaking on this device' : 'Nothing playing? Speak on this device'}
+      </button>
 
       <div className="flex flex-wrap gap-2 mb-2">
         <button
