@@ -66,16 +66,43 @@ export function loadVoices(timeoutMs = 3000): Promise<SpeechSynthesisVoice[]> {
   });
 }
 
-/** Indian-English voices first, then other English voices. */
+/**
+ * Known Indian-voice names across platforms, since `lang` alone misses some:
+ *  - macOS:        Rishi, Veena, Sangeeta
+ *  - Windows:      Heera, Ravi, Priya, Madhur, Swara, Kalpana, Hemant
+ *  - Edge/Azure:   Neerja, Prabhat (the "Online (Natural)" neural voices)
+ *  - Amazon Polly: Aditi, Raveena, Kajal
+ *  - Android:      Aarohi, Isha
+ */
+const INDIAN_VOICE_NAMES =
+  /rishi|veena|sangeeta|heera|ravi|priya|madhur|swara|kalpana|hemant|neerja|prabhat|aditi|raveena|kajal|aarohi|isha|indian/i;
+
+/** True for a voice that speaks Indian-accented English (or Hindi). */
+export function isIndianVoice(v: SpeechSynthesisVoice): boolean {
+  const lang = (v.lang || '').toLowerCase().replace('_', '-');
+  return lang.startsWith('en-in') || lang.startsWith('hi') || INDIAN_VOICE_NAMES.test(v.name || '');
+}
+
+/** Edge/Azure "Online (Natural)" voices sound dramatically better than local ones. */
+export function isNeuralVoice(v: SpeechSynthesisVoice): boolean {
+  return /online|natural|neural/i.test(v.name || '');
+}
+
+/**
+ * Best Indian voices first: neural Indian English, then any Indian English,
+ * then Hindi, then neural English, then the rest.
+ */
 export function rankVoices(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice[] {
   const score = (v: SpeechSynthesisVoice) => {
     const lang = (v.lang || '').toLowerCase().replace('_', '-');
-    const name = (v.name || '').toLowerCase();
-    if (lang.startsWith('en-in')) return 0;
-    if (/rishi|veena|indian|isha|aditi|raveena|kajal|neerja|prabhat/.test(name)) return 1;
+    const indianEnglish = lang.startsWith('en-in') || (INDIAN_VOICE_NAMES.test(v.name || '') && lang.startsWith('en'));
+    if (indianEnglish && isNeuralVoice(v)) return 0;
+    if (indianEnglish) return 1;
     if (lang.startsWith('hi')) return 2;
-    if (lang.startsWith('en')) return 3;
-    return 4;
+    if (INDIAN_VOICE_NAMES.test(v.name || '')) return 3;
+    if (lang.startsWith('en') && isNeuralVoice(v)) return 4;
+    if (lang.startsWith('en')) return 5;
+    return 6;
   };
   return [...voices].sort((a, b) => score(a) - score(b) || a.name.localeCompare(b.name));
 }
