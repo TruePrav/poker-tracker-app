@@ -4,11 +4,13 @@ import { AlertTriangle, ArrowRightLeft, DollarSign, Pause, Play, Plus, Minus, Sk
 import { useTournamentStore } from '../stores/useTournamentStore';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { fetchBlindStructures } from '../api/blinds';
+import { fetchTournament as fetchTournamentById } from '../api/tournaments';
 import { useTimerStore, selectCurrentBlind, selectNextBlind } from '../stores/useTimerStore';
 import { formatCurrencyShort } from '../utils/formatCurrency';
 import { formatTime } from '../utils/formatTime';
 import type { BlindStructure, TournamentTable } from 'shared';
 import { MAX_SEATS_PER_TABLE } from 'shared';
+import { AnnouncePanel } from '../components/AnnouncePanel';
 
 export function TournamentPage() {
   const { id } = useParams();
@@ -81,6 +83,33 @@ export function TournamentPage() {
     fetchPlayers();
     fetchBlindStructures().then(setAllBlindStructures).catch(() => {});
   }, [id]);
+
+  // Follow whichever device is driving the clock (typically the TV display).
+  // Skipped while this device's own timer is running so a phone-only setup
+  // still works without the two fighting over the countdown.
+  useEffect(() => {
+    if (!id) return;
+    if (isRunning) return;
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const fresh = await fetchTournamentById(Number(id));
+        if (cancelled) return;
+        useTournamentStore.setState((s) => ({
+          tournament: s.tournament ? { ...s.tournament, ...fresh } : fresh,
+        }));
+      } catch {
+        // keep the control screen usable if the API blips
+      }
+    };
+
+    const handle = window.setInterval(poll, 7000);
+    return () => {
+      cancelled = true;
+      clearInterval(handle);
+    };
+  }, [id, isRunning]);
 
   useEffect(() => {
     if (tournament?.blindStructure?.levels) {
@@ -884,6 +913,9 @@ export function TournamentPage() {
               </div>
             </div>
           )}
+
+          {/* Announcements (queued here, spoken by the TV display) */}
+          <AnnouncePanel tournamentId={tournament.id} />
 
           {/* Quick Player Actions */}
           <div className="border-t border-gray-800 bg-gray-950 p-3 sm:p-4">
