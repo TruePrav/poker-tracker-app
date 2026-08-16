@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { AlertTriangle, ArrowRightLeft, DollarSign, Pause, Play, Plus, Minus, SkipForward, SkipBack, RotateCcw, UserX, MonitorPlay, Trophy, Undo2 } from 'lucide-react';
+import { AlertTriangle, ArrowRightLeft, DollarSign, Pause, Play, Plus, Minus, SkipForward, SkipBack, RotateCcw, UserX, MonitorPlay, Trophy, Undo2, Coins, X } from 'lucide-react';
 import { useTournamentStore } from '../stores/useTournamentStore';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { fetchBlindStructures } from '../api/blinds';
@@ -57,6 +57,7 @@ export function TournamentPage() {
   const [showRebuy, setShowRebuy] = useState(false);
   const [showTopUp, setShowTopUp] = useState(false);
   const [showPayout, setShowPayout] = useState(false);
+  const [showChipCount, setShowChipCount] = useState(false);
   const [payoutStep, setPayoutStep] = useState<1 | 2>(1);
   const [chipCounts, setChipCounts] = useState<Record<number, string>>({});
   const [payoutAmounts, setPayoutAmounts] = useState<Record<number, string>>({});
@@ -857,6 +858,14 @@ export function TournamentPage() {
 
             <div className="hidden sm:block h-8 w-px bg-gray-700" />
             <button
+              onClick={() => setShowChipCount(true)}
+              className="px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 flex-shrink-0"
+            >
+              <Coins className="w-4 h-4" /> <span className="hidden sm:inline">Chip Count</span>
+              <span className="sm:hidden">Chips</span>
+            </button>
+
+            <button
               onClick={handleAddTable}
               disabled={isAddingTable}
               className="px-3 sm:px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-60 text-white rounded-lg text-sm font-medium flex items-center gap-2"
@@ -1157,6 +1166,166 @@ export function TournamentPage() {
               </div>
             </div>
           )}
+
+          {/* Chip Count — break-time stack survey, per table */}
+          {showChipCount && (() => {
+            const txs = tournament.transactions || [];
+            const buyInTxCount = txs.filter((tx) => tx.type === 'BUY_IN' || tx.type === 'REBUY').length;
+            const topUpTxCount = txs.filter((tx) => tx.type === 'TOP_UP').length;
+            const expectedChips =
+              buyInTxCount * tournament.startingChips + topUpTxCount * tournament.topUpChips;
+
+            const chipsOf = (playerId: number) => parseInt(chipCounts[playerId] || '0') || 0;
+            const countedTotal = activePlayers.reduce((sum, e) => sum + chipsOf(e.playerId), 0);
+            const entered = activePlayers.filter((e) => (chipCounts[e.playerId] || '').trim() !== '');
+            const average = activePlayers.length ? Math.round(countedTotal / activePlayers.length) : 0;
+            const bigBlind = blindLevels[currentLevel - 1]?.bigBlind || 0;
+
+            const tablesWithSeated = (tournament.tables || []).map((t) => {
+              const seated = (t.entries || []).filter((e) => e.status === 'SEATED');
+              return {
+                table: t,
+                seated: [...seated].sort((a, b) => (a.seatNumber || 0) - (b.seatNumber || 0)),
+                chips: seated.reduce((sum, e) => sum + chipsOf(e.playerId), 0),
+              };
+            });
+
+            const leaderboard = [...activePlayers].sort((a, b) => chipsOf(b.playerId) - chipsOf(a.playerId));
+
+            return (
+              <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-3 sm:p-4">
+                <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl max-h-[calc(100dvh-1.5rem)] flex flex-col overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 flex-none">
+                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                      <Coins className="w-5 h-5 text-gold" /> Chip Count
+                    </h2>
+                    <button
+                      onClick={() => setShowChipCount(false)}
+                      className="p-2 text-gray-400 hover:text-white"
+                      aria-label="Close"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Summary */}
+                  <div className="px-5 py-3 border-b border-gray-800 flex-none grid grid-cols-3 gap-3 text-center">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500">Counted</p>
+                      <p className="text-sm font-bold text-white">{countedTotal.toLocaleString()}</p>
+                      <p className="text-[10px] text-gray-500">of {expectedChips.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500">Average</p>
+                      <p className="text-sm font-bold text-gold">{average.toLocaleString()}</p>
+                      <p className="text-[10px] text-gray-500">
+                        {bigBlind ? `${Math.floor(average / bigBlind)} BB` : ' '}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500">Entered</p>
+                      <p className="text-sm font-bold text-white">
+                        {entered.length}/{activePlayers.length}
+                      </p>
+                      <p
+                        className={`text-[10px] ${
+                          countedTotal === expectedChips ? 'text-felt' : 'text-yellow-500'
+                        }`}
+                      >
+                        {countedTotal === expectedChips
+                          ? 'balanced'
+                          : `${countedTotal > expectedChips ? '+' : ''}${(
+                              countedTotal - expectedChips
+                            ).toLocaleString()}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Per-table entry */}
+                  <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                    {tablesWithSeated.map(({ table, seated, chips }) => (
+                      <div key={table.id}>
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-sm font-semibold text-white">
+                            Table {table.tableNumber}
+                            <span className="text-gray-500 font-normal"> &middot; {seated.length} players</span>
+                          </h3>
+                          <span className="text-xs text-gold font-mono">{chips.toLocaleString()}</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {seated.map((e) => (
+                            <div key={e.playerId} className="flex items-center gap-2">
+                              <span className="text-[10px] font-mono text-gray-600 w-4 flex-none">
+                                {e.seatNumber}
+                              </span>
+                              <span className="text-sm text-gray-200 flex-1 min-w-0 truncate">
+                                {e.player?.name}
+                              </span>
+                              {bigBlind > 0 && chipsOf(e.playerId) > 0 && (
+                                <span className="text-[10px] text-gray-500 flex-none">
+                                  {Math.floor(chipsOf(e.playerId) / bigBlind)} BB
+                                </span>
+                              )}
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                value={chipCounts[e.playerId] || ''}
+                                onChange={(ev) =>
+                                  setChipCounts((prev) => ({ ...prev, [e.playerId]: ev.target.value }))
+                                }
+                                placeholder="0"
+                                className="w-24 flex-none px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-sm text-white text-right focus:outline-none focus:border-felt"
+                              />
+                            </div>
+                          ))}
+                          {seated.length === 0 && (
+                            <p className="text-xs text-gray-600">Nobody seated at this table.</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Leaderboard once something is entered */}
+                    {entered.length > 0 && (
+                      <div className="border-t border-gray-800 pt-3">
+                        <h3 className="text-sm font-semibold text-white mb-2">Standings</h3>
+                        <div className="space-y-1">
+                          {leaderboard.map((e, i) => (
+                            <div key={e.playerId} className="flex items-center gap-2 text-sm">
+                              <span className="text-[10px] font-mono text-gray-600 w-4 flex-none">{i + 1}</span>
+                              <span className="text-gray-200 flex-1 min-w-0 truncate">{e.player?.name}</span>
+                              <span
+                                className={`font-mono text-xs flex-none ${
+                                  chipsOf(e.playerId) >= average ? 'text-felt' : 'text-gray-400'
+                                }`}
+                              >
+                                {chipsOf(e.playerId).toLocaleString()}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-none px-5 py-3 border-t border-gray-800 flex gap-2">
+                    <button
+                      onClick={() => setChipCounts({})}
+                      className="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-medium flex-none"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      onClick={() => setShowChipCount(false)}
+                      className="flex-1 px-4 py-2.5 bg-felt hover:bg-felt-dark text-white rounded-lg text-sm font-medium"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Payout Modal - 2-step flow */}
           {showPayout && (() => {
