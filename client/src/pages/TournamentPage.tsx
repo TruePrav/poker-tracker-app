@@ -340,8 +340,19 @@ export function TournamentPage() {
   }, [isAddingTable, tournament?.tables, tournament?.id, createTable, loadTournament]);
 
   const handleManualSeatClick = useCallback(
-    async (tableId: number, seatNumber: number, occupied: boolean) => {
-      if (!manualSeatPlayerId || occupied) return;
+    async (tableId: number, seatNumber: number, occupied: boolean, seatedPlayerId?: number) => {
+      // Tapping a seated player picks them up; tapping them again puts them
+      // back down. With someone held, any empty seat on any table is a valid
+      // destination, which is how a player gets moved across tables.
+      if (occupied) {
+        if (!seatedPlayerId) return;
+        setManualSeatPlayerId((current) =>
+          Number(current) === seatedPlayerId ? '' : String(seatedPlayerId)
+        );
+        return;
+      }
+
+      if (!manualSeatPlayerId) return;
       const playerId = Number(manualSeatPlayerId);
       if (!playerId) return;
 
@@ -738,6 +749,24 @@ export function TournamentPage() {
             </div>
           )}
 
+          {/* Move hint — shown while a player is picked up */}
+          {manualSeatPlayerId && (
+            <div className="mx-4 sm:mx-6 mt-4 p-3 bg-gold/10 border border-gold/50 rounded-xl flex items-center justify-between gap-3">
+              <p className="text-xs sm:text-sm text-gold">
+                <strong>
+                  {players.find((p) => p.id === Number(manualSeatPlayerId))?.name || 'Player'}
+                </strong>{' '}
+                picked up. Tap any empty seat, on any table, to move them there.
+              </p>
+              <button
+                onClick={() => setManualSeatPlayerId('')}
+                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-medium flex-shrink-0"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
           {/* Table Grid */}
           <div className="flex-1 lg:overflow-y-auto p-4 sm:p-6">
             <div className={`grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 ${(tournament.tables?.length || 0) > 2 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
@@ -773,10 +802,15 @@ export function TournamentPage() {
                             style={{ left: `${cx}%`, top: `${cy}%` }}
                           >
                             <div
-                              onClick={() => handleManualSeatClick(table.id, seatNum, Boolean(entry))}
+                              onClick={() =>
+                                handleManualSeatClick(table.id, seatNum, Boolean(entry), entry?.playerId)
+                              }
+                              title={entry ? `Tap to move ${entry.player?.name || 'player'}` : 'Empty seat'}
                               className={`w-14 h-10 rounded-lg flex flex-col items-center justify-center text-[10px] leading-tight ${
                                 entry
-                                  ? 'bg-gray-700 border border-gray-600 text-white'
+                                  ? Number(manualSeatPlayerId) === entry.playerId
+                                    ? 'bg-gold text-gray-900 border border-gold ring-2 ring-gold/50 cursor-pointer font-bold'
+                                    : 'bg-gray-700 border border-gray-600 text-white cursor-pointer hover:bg-gray-600'
                                   : manualSeatPlayerId
                                   ? 'bg-felt/20 border border-felt text-felt cursor-pointer hover:bg-felt/30'
                                   : 'bg-gray-800/50 border border-gray-800 text-gray-600'
