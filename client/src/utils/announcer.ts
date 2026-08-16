@@ -1,9 +1,9 @@
 /**
  * Announcer — text-to-speech + audio clip playback for the tournament display.
  *
- * Everything runs in the browser via the Web Speech API, so there are no API
- * keys and no network round-trip. Which voices exist depends on the machine,
- * so the voice is chosen at runtime and remembered per-device.
+ * Speech comes either from the browser's built-in voices (offline, no key) or
+ * from ElevenLabs via the server-side proxy. Which browser voices exist depends
+ * on the machine, so the voice is chosen at runtime and remembered per-device.
  */
 
 import { POKER_NOW_START_AUDIO } from '../assets/pokerNowStartAudio';
@@ -12,6 +12,27 @@ const VOICE_KEY = 'announcer.voiceURI';
 const RATE_KEY = 'announcer.rate';
 const PITCH_KEY = 'announcer.pitch';
 const ENABLED_KEY = 'announcer.enabled';
+const PROVIDER_KEY = 'announcer.provider';
+const ELEVEN_VOICE_KEY = 'announcer.elevenVoiceId';
+
+export type Provider = 'browser' | 'elevenlabs';
+
+export function getProvider(): Provider {
+  return localStorage.getItem(PROVIDER_KEY) === 'elevenlabs' ? 'elevenlabs' : 'browser';
+}
+
+export function setProvider(p: Provider) {
+  localStorage.setItem(PROVIDER_KEY, p);
+}
+
+export function getElevenVoiceId(): string | null {
+  return localStorage.getItem(ELEVEN_VOICE_KEY);
+}
+
+export function setElevenVoiceId(id: string | null) {
+  if (id) localStorage.setItem(ELEVEN_VOICE_KEY, id);
+  else localStorage.removeItem(ELEVEN_VOICE_KEY);
+}
 
 export interface AnnouncerSettings {
   voiceURI: string | null;
@@ -131,49 +152,96 @@ function enqueue(task: () => Promise<void>): Promise<void> {
   return chain;
 }
 
+/**
+ * Synthesise via the server-side ElevenLabs proxy. Resolves false if anything
+ * goes wrong so the caller can fall back to the browser voice — a failed API
+ * call must never mean silence at the table.
+ */
+async function speakViaElevenLabs(text: string): Promise<boolean> {
+  const voiceId = getElevenVoiceId();
+  if (!voiceId) return false;
+  try {
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, voiceId }),
+    });
+    if (!res.ok) {
+      console.warn('[announcer] ElevenLabs failed, falling back', res.status);
+      return false;
+    }
+    const blob = await res.blob();
+    if (!blob.size) return false;
+    const url = URL.createObjectURL(blob);
+    await new Promise<void>((resolve) => {
+      const audio = new Audio(url);
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      audio.onended = finish;
+      audio.onerror = finish;
+      setTimeout(finish, 60000);
+      audio.play().catch(finish);
+    });
+    return true;
+  } catch (err) {
+    console.warn('[announcer] ElevenLabs error, falling back', err);
+    return false;
+  }
+}
+
+function speakWithBrowser(text: string): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const trimmed = (text || '').trim();
+    if (!trimmed || typeof speechSynthesis === 'undefined') {
+      resolve();
+      return;
+    }
+    loadVoices().then((voices) => {
+      const utterance = new SpeechSynthesisUtterance(trimmed);
+      const voice = resolveVoice(voices);
+      if (voice) {
+        utterance.voice = voice;
+        utterance.lang = voice.lang;
+      }
+      const { rate, pitch } = getSettings();
+      utterance.rate = rate;
+      utterance.pitch = pitch;
+
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      utterance.onend = finish;
+      utterance.onerror = finish;
+      const guardMs = Math.max(5000, trimmed.length * 120);
+      setTimeout(finish, guardMs);
+      try {
+        speechSynthesis.resume();
+      } catch {}
+      speechSynthesis.speak(utterance);
+    });
+  });
+}
+
 export function speak(text: string): Promise<void> {
-  return enqueue(
-    () =>
-      new Promise<void>((resolve) => {
-        const trimmed = (text || '').trim();
-        if (!trimmed || !getSettings().enabled || typeof speechSynthesis === 'undefined') {
-          resolve();
-          return;
-        }
+  return enqueue(async () => {
+    const trimmed = (text || '').trim();
+    if (!trimmed || !getSettings().enabled) return;
 
-        loadVoices().then((voices) => {
-          const utterance = new SpeechSynthesisUtterance(trimmed);
-          const voice = resolveVoice(voices);
-          if (voice) {
-            utterance.voice = voice;
-            utterance.lang = voice.lang;
-          }
-          const { rate, pitch } = getSettings();
-          utterance.rate = rate;
-          utterance.pitch = pitch;
-
-          let settled = false;
-          const finish = () => {
-            if (settled) return;
-            settled = true;
-            resolve();
-          };
-          utterance.onend = finish;
-          utterance.onerror = finish;
-
-          // Some engines silently drop long utterances; cap the wait so the
-          // queue can never deadlock.
-          const guardMs = Math.max(5000, trimmed.length * 120);
-          setTimeout(finish, guardMs);
-
-          // Chrome occasionally parks the queue in a paused state.
-          try {
-            speechSynthesis.resume();
-          } catch {}
-          speechSynthesis.speak(utterance);
-        });
-      })
-  );
+    if (getProvider() === 'elevenlabs') {
+      const ok = await speakViaElevenLabs(trimmed);
+      if (ok) return;
+      // fall through to the browser voice
+    }
+    await speakWithBrowser(trimmed);
+  });
 }
 
 export function playClip(src: string): Promise<void> {
