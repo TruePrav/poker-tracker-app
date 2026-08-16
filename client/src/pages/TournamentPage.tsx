@@ -1016,8 +1016,10 @@ export function TournamentPage() {
           </div>
 
           {/* Action Log */}
-          <div className="border-t border-gray-800 bg-gray-900 p-3 sm:p-4 max-h-52 overflow-y-auto">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Action Log</p>
+          <div className="border-t border-gray-800 bg-gray-900 p-3 sm:p-4 max-h-72 overflow-y-auto">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              Action Log <span className="text-gray-600 normal-case font-normal">— undo removes the entry and its money from the pot</span>
+            </p>
             {(tournament.transactions || []).length === 0 ? (
               <p className="text-xs text-gray-500">No actions yet.</p>
             ) : (
@@ -1059,14 +1061,15 @@ export function TournamentPage() {
                                 await undoTransaction(tx.id);
                               }
                             }}
-                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 transition-all rounded flex-shrink-0"
+                            className="px-2 py-1 bg-gray-800 hover:bg-red-900/60 text-gray-400 hover:text-red-300 rounded flex items-center gap-1 flex-shrink-0"
                             title={`Undo ${typeLabel[tx.type]}`}
                             aria-label={`Undo ${typeLabel[tx.type]}`}
                           >
-                            <Undo2 className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+                            <Undo2 className="w-3 h-3" />
+                            <span className="hidden sm:inline text-[10px] font-medium">Undo</span>
                           </button>
                         )}
-                        {!canUndo && <div className="w-5 flex-shrink-0" />}
+                        {!canUndo && <div className="w-5 sm:w-16 flex-shrink-0" />}
                       </div>
                     );
                   })}
