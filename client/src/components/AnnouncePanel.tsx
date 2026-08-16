@@ -91,7 +91,8 @@ export function AnnouncePanel({ tournamentId }: Props) {
           onClick={() =>
             send(async () => {
               await queueClip(tournamentId, 'pokerNowStart');
-              await queueSpeech(tournamentId, getScripts().intro);
+              // 'intro' is expanded by the display into the multi-voice sequence.
+              await queueClip(tournamentId, 'intro');
             }, 'Intro queued')
           }
           disabled={busy}

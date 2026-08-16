@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { fetchPendingAnnouncements, markAnnouncementPlayed } from '../api/announcements';
-import { speak, playClip, clipSrc } from '../utils/announcer';
+import { speak, playClip, clipSrc, playIntro } from '../utils/announcer';
+import { getIntroSegments } from '../utils/announcementScripts';
 
 const POLL_MS = 3000;
 
@@ -27,7 +28,11 @@ export function useAnnouncementPlayer(tournamentId: number | null | undefined, e
           handledRef.current.add(a.id);
           // Mark first so an overlapping poll can never replay it.
           markAnnouncementPlayed(tournamentId, a.id).catch(() => {});
-          if (a.kind === 'AUDIO' && a.audioKey) {
+          if (a.kind === 'AUDIO' && a.audioKey === 'intro') {
+            // The intro is a multi-voice sequence, so it is played from the
+            // segments stored on this device rather than as a single clip.
+            playIntro(getIntroSegments());
+          } else if (a.kind === 'AUDIO' && a.audioKey) {
             const src = clipSrc(a.audioKey);
             if (src) playClip(src);
           } else if (a.text) {

@@ -11,6 +11,8 @@ import {
   playClip,
   stopAll,
   CLIPS,
+  SFX,
+  playIntro,
   getProvider,
   setProvider,
   getElevenVoiceId,
@@ -25,6 +27,10 @@ import {
   DEFAULT_INTRO,
   DEFAULT_LEVEL,
   renderTemplate,
+  getIntroSegments,
+  saveIntroSegments,
+  resetIntroSegments,
+  type IntroSegment,
 } from '../utils/announcementScripts';
 
 interface ElevenVoice {
@@ -52,6 +58,13 @@ export function AnnouncerSettings({ onClose }: Props) {
   const [loadingEleven, setLoadingEleven] = useState(false);
   const [elevenError, setElevenError] = useState('');
   const [voiceSearch, setVoiceSearch] = useState('');
+  const [introSegments, setIntroSegments] = useState<IntroSegment[]>(getIntroSegments());
+
+  const updateSegment = (id: string, patch: Partial<IntroSegment>) => {
+    const next = introSegments.map((s) => (s.id === id ? { ...s, ...patch } : s));
+    setIntroSegments(next);
+    saveIntroSegments(next);
+  };
 
   const indianEleven = elevenVoices.filter((v) => v.shared);
   const accountEleven = elevenVoices.filter((v) => !v.shared);
@@ -373,21 +386,99 @@ export function AnnouncerSettings({ onClose }: Props) {
         {/* Scripts */}
         <div className="space-y-3 border-t border-gray-800 pt-4">
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">
-              Tournament intro script
-            </label>
-            <textarea
-              value={scripts.intro}
-              onChange={(e) => updateScript({ intro: e.target.value })}
-              rows={5}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-felt"
-            />
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-gray-400">
+                Tournament intro — plays as one sequence
+              </label>
+              <button
+                onClick={() => {
+                  resetIntroSegments();
+                  setIntroSegments(getIntroSegments());
+                }}
+                className="text-[11px] text-gray-400 hover:text-white underline"
+              >
+                Reset intro
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {introSegments.map((seg, i) =>
+                seg.kind === 'sfx' ? (
+                  <div
+                    key={seg.id}
+                    className="flex items-center gap-2 px-3 py-2 bg-gray-800/50 border border-dashed border-gray-700 rounded-lg"
+                  >
+                    <span className="text-[11px] text-gray-400 flex-1">
+                      {i + 1}. Record scratch
+                    </span>
+                    <button
+                      onClick={() => playClip(SFX.scratch)}
+                      className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-[11px] flex items-center gap-1"
+                    >
+                      <Play className="w-3 h-3" /> Play
+                    </button>
+                  </div>
+                ) : (
+                  <div key={seg.id} className="p-3 bg-gray-800/40 border border-gray-700 rounded-lg space-y-2">
+                    <p className="text-[11px] font-medium text-gray-400">
+                      {i + 1}. Spoken part
+                    </p>
+                    <textarea
+                      value={seg.text || ''}
+                      onChange={(e) => updateSegment(seg.id, { text: e.target.value })}
+                      rows={3}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-felt"
+                    />
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={seg.elevenVoiceId || ''}
+                        onChange={(e) => updateSegment(seg.id, { elevenVoiceId: e.target.value || null })}
+                        className="flex-1 min-w-0 px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-xs text-white focus:outline-none focus:border-felt"
+                      >
+                        <option value="">Use the main voice</option>
+                        {indianEleven.length > 0 && (
+                          <optgroup label="🇮🇳 Indian English">
+                            {indianEleven.map((v) => (
+                              <option key={v.voiceId} value={v.voiceId}>
+                                {v.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {accountEleven.length > 0 && (
+                          <optgroup label="Your account">
+                            {accountEleven.map((v) => (
+                              <option key={v.voiceId} value={v.voiceId}>
+                                {v.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </select>
+                      <button
+                        onClick={() =>
+                          playIntro([{ ...seg, kind: 'speech' }])
+                        }
+                        className="px-2 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-[11px] flex items-center gap-1 flex-none"
+                      >
+                        <Play className="w-3 h-3" /> Test
+                      </button>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+
             <button
-              onClick={() => speak(scripts.intro)}
-              className="mt-1 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-xs flex items-center gap-1"
+              onClick={() => playIntro(introSegments)}
+              className="mt-2 px-3 py-2 bg-felt hover:bg-felt-dark text-white rounded-lg text-xs font-medium flex items-center gap-1"
             >
-              <Play className="w-3 h-3" /> Preview intro
+              <Play className="w-3 h-3" /> Play full intro
             </button>
+            <p className="text-[10px] text-gray-500 mt-1">
+              Saves as you type. Each part can use its own voice; leave it on “main voice” to follow the
+              engine setting above.
+            </p>
           </div>
 
           <div>

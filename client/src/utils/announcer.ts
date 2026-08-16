@@ -7,6 +7,8 @@
  */
 
 import { POKER_NOW_START_AUDIO } from '../assets/pokerNowStartAudio';
+import { SCRATCH_AUDIO } from '../assets/scratchAudio';
+import type { IntroSegment } from './announcementScripts';
 
 const VOICE_KEY = 'announcer.voiceURI';
 const RATE_KEY = 'announcer.rate';
@@ -157,8 +159,8 @@ function enqueue(task: () => Promise<void>): Promise<void> {
  * goes wrong so the caller can fall back to the browser voice — a failed API
  * call must never mean silence at the table.
  */
-async function speakViaElevenLabs(text: string): Promise<boolean> {
-  const voiceId = getElevenVoiceId();
+async function speakViaElevenLabs(text: string, voiceOverride?: string | null): Promise<boolean> {
+  const voiceId = voiceOverride || getElevenVoiceId();
   if (!voiceId) return false;
   try {
     const res = await fetch('/api/tts', {
@@ -194,7 +196,7 @@ async function speakViaElevenLabs(text: string): Promise<boolean> {
   }
 }
 
-function speakWithBrowser(text: string): Promise<void> {
+function speakWithBrowser(text: string, voiceOverride?: string | null): Promise<void> {
   return new Promise<void>((resolve) => {
     const trimmed = (text || '').trim();
     if (!trimmed || typeof speechSynthesis === 'undefined') {
@@ -203,7 +205,8 @@ function speakWithBrowser(text: string): Promise<void> {
     }
     loadVoices().then((voices) => {
       const utterance = new SpeechSynthesisUtterance(trimmed);
-      const voice = resolveVoice(voices);
+      const voice =
+        (voiceOverride && voices.find((v) => v.voiceURI === voiceOverride)) || resolveVoice(voices);
       if (voice) {
         utterance.voice = voice;
         utterance.lang = voice.lang;
@@ -230,17 +233,77 @@ function speakWithBrowser(text: string): Promise<void> {
   });
 }
 
+/**
+ * One line, optionally in a specific voice. Not queued — callers that need
+ * ordering either use speak() or run inside a single enqueued task.
+ */
+async function speakOnce(
+  text: string,
+  voices?: { voiceURI?: string | null; elevenVoiceId?: string | null }
+): Promise<void> {
+  const trimmed = (text || '').trim();
+  if (!trimmed) return;
+
+  // A per-segment ElevenLabs voice implies ElevenLabs even if the global
+  // engine is set to browser, so a mixed-voice intro still works.
+  if (getProvider() === 'elevenlabs' || voices?.elevenVoiceId) {
+    const ok = await speakViaElevenLabs(trimmed, voices?.elevenVoiceId);
+    if (ok) return;
+    // fall through to the browser voice
+  }
+  await speakWithBrowser(trimmed, voices?.voiceURI);
+}
+
 export function speak(text: string): Promise<void> {
   return enqueue(async () => {
-    const trimmed = (text || '').trim();
-    if (!trimmed || !getSettings().enabled) return;
+    if (!getSettings().enabled) return;
+    await speakOnce(text);
+  });
+}
 
-    if (getProvider() === 'elevenlabs') {
-      const ok = await speakViaElevenLabs(trimmed);
-      if (ok) return;
-      // fall through to the browser voice
+/** Play an audio clip without touching the queue (used inside sequences). */
+function playClipOnce(src: string): Promise<void> {
+  return new Promise<void>((resolve) => {
+    try {
+      const audio = new Audio(src);
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      audio.onended = finish;
+      audio.onerror = finish;
+      setTimeout(finish, 30000);
+      audio.play().catch(finish);
+    } catch {
+      resolve();
     }
-    await speakWithBrowser(trimmed);
+  });
+}
+
+export const SFX = {
+  scratch: SCRATCH_AUDIO,
+} as const;
+
+/**
+ * Play a multi-segment intro as one uninterrupted sequence: each spoken segment
+ * can carry its own voice, and sfx segments drop a clip in between. Queued as a
+ * single task so nothing can cut in halfway through.
+ */
+export function playIntro(segments: IntroSegment[]): Promise<void> {
+  return enqueue(async () => {
+    if (!getSettings().enabled) return;
+    for (const segment of segments) {
+      if (segment.kind === 'sfx') {
+        await playClipOnce(SFX[segment.sfx || 'scratch'] || SFX.scratch);
+      } else {
+        await speakOnce(segment.text || '', {
+          voiceURI: segment.voiceURI,
+          elevenVoiceId: segment.elevenVoiceId,
+        });
+      }
+    }
   });
 }
 

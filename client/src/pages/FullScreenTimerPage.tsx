@@ -8,8 +8,8 @@ import { formatTime } from '../utils/formatTime';
 import { fetchTournament } from '../api/tournaments';
 import { fetchPendingAnnouncements, markAnnouncementPlayed } from '../api/announcements';
 import { AnnouncerSettings } from '../components/AnnouncerSettings';
-import { speak, playClip, armAudio, clipSrc, CLIPS, getSettings, saveSettings } from '../utils/announcer';
-import { getScripts, renderTemplate, getRebuysCloseAfterLevel } from '../utils/announcementScripts';
+import { speak, playClip, playIntro, armAudio, clipSrc, CLIPS, getSettings, saveSettings } from '../utils/announcer';
+import { getScripts, getIntroSegments, renderTemplate, getRebuysCloseAfterLevel } from '../utils/announcementScripts';
 
 const ANNOUNCEMENT_POLL_MS = 3000;
 const STATE_POLL_MS = 7000;
@@ -227,9 +227,8 @@ export function FullScreenTimerPage() {
   }, []);
 
   const runIntro = () => {
-    const scripts = getScripts();
     playClip(CLIPS.pokerNowStart);
-    speak(scripts.intro);
+    playIntro(getIntroSegments());
   };
 
   const handleArm = async () => {
