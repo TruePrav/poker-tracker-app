@@ -7,6 +7,7 @@ import { blindRoutes } from './routes/blinds.js';
 import { transactionRoutes } from './routes/transactions.js';
 import { statsRoutes } from './routes/stats.js';
 import { announcementRoutes } from './routes/announcements.js';
+import { ttsRoutes } from './routes/tts.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -76,6 +77,7 @@ app.use('/api/blind-structures', blindRoutes);
 app.use('/api/tournaments', transactionRoutes);
 app.use('/api/tournaments', announcementRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/tts', ttsRoutes);
 
 // Error handling
 app.use(errorHandler);
