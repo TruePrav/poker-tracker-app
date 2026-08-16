@@ -220,6 +220,19 @@ export function TournamentPage() {
     (tournament?.transactions || []).filter((tx) => tx.type === 'TOP_UP').map((tx) => tx.playerId)
   );
 
+  /**
+   * Side pots come out of the first buy-in only: $20 bounty and $20 ASS pot per
+   * player. Everything else (rebuys, add-ons) is pure main pot. Amounts are in
+   * cents, matching totalPrizePool.
+   */
+  const BOUNTY_PER_PLAYER = 2000;
+  const ASS_POT_PER_PLAYER = 2000;
+  const firstBuyInCount = (tournament?.transactions || []).filter((tx) => tx.type === 'BUY_IN').length;
+  const bountyPot = firstBuyInCount * BOUNTY_PER_PLAYER;
+  const assPot = firstBuyInCount * ASS_POT_PER_PLAYER;
+  // Never let the side pots push the main pot negative on a half-entered game.
+  const mainPot = Math.max(0, (tournament?.totalPrizePool || 0) - bountyPot - assPot);
+
   const getSeatForLateBuyIn = useCallback((tablesInput?: TournamentTable[]) => {
     const tables = tablesInput || tournament?.tables || [];
     if (tables.length === 0) {
@@ -487,8 +500,11 @@ export function TournamentPage() {
         </div>
         <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
           <div className="text-right">
-            <p className="text-[10px] sm:text-xs text-gray-400">Prize Pool</p>
-            <p className="text-base sm:text-xl font-bold text-gold">{formatCurrencyShort(tournament.totalPrizePool)}</p>
+            <p className="text-[10px] sm:text-xs text-gray-400">Main Pot</p>
+            <p className="text-base sm:text-xl font-bold text-gold">{formatCurrencyShort(mainPot)}</p>
+            <p className="text-[9px] sm:text-[10px] text-gray-500 leading-tight">
+              +{formatCurrencyShort(bountyPot)} bounty &middot; +{formatCurrencyShort(assPot)} ASS
+            </p>
           </div>
           <a
             href={`/tournament/${tournament.id}/timer`}
@@ -1130,7 +1146,12 @@ export function TournamentPage() {
                   <Trophy className="w-5 h-5 text-gold" /> {payoutStep === 1 ? 'Step 1: Chip Count' : 'Step 2: Payouts'}
                 </h2>
                 <p className="text-sm text-gray-400 mb-2">
-                  Prize Pool: <span className="text-gold font-bold">{formatCurrencyShort(tournament.totalPrizePool)}</span>
+                  Main Pot: <span className="text-gold font-bold">{formatCurrencyShort(mainPot)}</span>
+                </p>
+                <p className="text-xs text-gray-500 mb-2">
+                  Paid separately: {formatCurrencyShort(bountyPot)} bounties &middot;{' '}
+                  {formatCurrencyShort(assPot)} ASS pot &middot; total in{' '}
+                  {formatCurrencyShort(tournament.totalPrizePool)}
                 </p>
 
                 {payoutStep === 1 && (
@@ -1169,7 +1190,7 @@ export function TournamentPage() {
                           const amounts: Record<number, string> = {};
                           for (const e of allPayoutPlayers) {
                             const chips = parseInt(chipCounts[e.playerId] || '0') || 0;
-                            const dollarAmount = (chips / totalChipsEntered) * (tournament.totalPrizePool / 100);
+                            const dollarAmount = (chips / totalChipsEntered) * (mainPot / 100);
                             amounts[e.playerId] = dollarAmount > 0 ? dollarAmount.toFixed(2) : '';
                           }
                           setPayoutAmounts(amounts);
@@ -1201,7 +1222,7 @@ export function TournamentPage() {
                               const amounts: Record<number, string> = {};
                               preset.splits.forEach((pct, i) => {
                                 if (rankedPayoutPlayers[i]) {
-                                  amounts[rankedPayoutPlayers[i].playerId] = ((tournament.totalPrizePool * pct) / 100 / 100).toFixed(2);
+                                  amounts[rankedPayoutPlayers[i].playerId] = ((mainPot * pct) / 100 / 100).toFixed(2);
                                 }
                               });
                               setPayoutAmounts(amounts);
@@ -1227,7 +1248,7 @@ export function TournamentPage() {
                               const amounts: Record<number, string> = {};
                               preset.splits.forEach((pct, i) => {
                                 if (rankedPayoutPlayers[i]) {
-                                  amounts[rankedPayoutPlayers[i].playerId] = ((tournament.totalPrizePool * pct) / 100 / 100).toFixed(2);
+                                  amounts[rankedPayoutPlayers[i].playerId] = ((mainPot * pct) / 100 / 100).toFixed(2);
                                 }
                               });
                               setPayoutAmounts(amounts);
@@ -1268,7 +1289,7 @@ export function TournamentPage() {
                     {/* Total allocated vs prize pool */}
                     {(() => {
                       const totalAllocated = Object.values(payoutAmounts).reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
-                      const prizeTotal = tournament.totalPrizePool / 100;
+                      const prizeTotal = mainPot / 100;
                       const diff = Math.abs(totalAllocated - prizeTotal);
                       const ok = diff < 0.02;
                       return (
