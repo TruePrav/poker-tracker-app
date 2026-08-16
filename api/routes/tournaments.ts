@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { query } from '../db';
+import { query, withTransaction } from '../db';
 
 export const tournamentRoutes = Router();
 
@@ -80,15 +80,43 @@ tournamentRoutes.get('/', async (_req, res, next) => {
   }
 });
 
+/**
+ * Remove everything hanging off a set of tournaments, then the tournaments.
+ *
+ * The Prisma schema declares onDelete: Cascade but the live database was not
+ * created with those actions, so deleting a tournament with any history fails
+ * on a foreign key. Clearing the children explicitly works either way.
+ *
+ * Order matters: entries reference tables, so entries go first. Announcements
+ * have no foreign key but are cleared so a deleted tournament cannot leave
+ * queued lines behind for the display to speak.
+ */
+async function deleteTournamentsById(ids: number[]) {
+  if (ids.length === 0) return [];
+  return withTransaction(async (client) => {
+    await client.query('DELETE FROM "Transaction" WHERE "tournamentId" = ANY($1::int[])', [ids]);
+    await client.query('DELETE FROM "TournamentEntry" WHERE "tournamentId" = ANY($1::int[])', [ids]);
+    await client.query('DELETE FROM "TournamentTable" WHERE "tournamentId" = ANY($1::int[])', [ids]);
+    // Created on demand by the announcements route, so it may not exist yet.
+    await client
+      .query('DELETE FROM "Announcement" WHERE "tournamentId" = ANY($1::int[])', [ids])
+      .catch(() => undefined);
+    const result = await client.query(
+      'DELETE FROM "Tournament" WHERE "id" = ANY($1::int[]) RETURNING "id", "name", "status"',
+      [ids]
+    );
+    return result.rows;
+  });
+}
+
 // DELETE all active tournaments (SETUP/RUNNING/PAUSED)
 tournamentRoutes.delete('/active', async (_req, res, next) => {
   try {
-    const rows = await query(
-      `DELETE FROM "Tournament"
-       WHERE "status" = ANY($1::text[])
-       RETURNING "id", "name", "status"`,
+    const active = await query(
+      `SELECT "id" FROM "Tournament" WHERE "status" = ANY($1::text[])`,
       [['SETUP', 'RUNNING', 'PAUSED']]
     );
+    const rows = await deleteTournamentsById(active.map((r: any) => Number(r.id)));
     res.json({ deletedCount: rows.length, tournaments: rows });
   } catch (err) {
     next(err);
@@ -182,12 +210,7 @@ tournamentRoutes.get('/:id', async (req, res, next) => {
 tournamentRoutes.delete('/:id', async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const rows = await query(
-      `DELETE FROM "Tournament"
-       WHERE "id" = $1
-       RETURNING "id", "name", "status"`,
-      [id]
-    );
+    const rows = await deleteTournamentsById([id]);
     const deleted = rows[0];
     if (!deleted) {
       return res.status(404).json({ error: 'Record not found.' });
