@@ -10,14 +10,65 @@ const BREAK_KEY = 'announcer.script.break';
 const BUYINS_KEY = 'announcer.script.buyinsClosed';
 const REBUY_LEVEL_KEY = 'announcer.rebuysCloseAfterLevel';
 
-export const DEFAULT_INTRO = [
-  'Namaskar, ladies and gentlemen, and welcome to the Mahtani Residence!',
-  'Tonight we are celebrating A. S. S. BUMP — our August born poker aficionados.',
-  'Happy birthday to Amrit, Sunil, Sanjay, and Bhavesh!',
-  'Also known as Bare Ass. And Bumpy Ass.',
-  'Gentlemen, please reserve your seat, count your chips, and may the flop be with you.',
-  'Shuffle up and deal!',
-].join(' ');
+const INTRO_SEGMENTS_KEY = 'announcer.introSegments';
+
+/**
+ * The intro plays as a sequence: a segment can be spoken (with its own voice)
+ * or a sound effect. That lets the opening switch voices partway through —
+ * a straight welcome, a record scratch, then a different voice for the roast.
+ */
+export interface IntroSegment {
+  id: string;
+  kind: 'speech' | 'sfx';
+  text?: string;
+  sfx?: 'scratch';
+  /** Per-segment overrides; null/undefined falls back to the global voice. */
+  voiceURI?: string | null;
+  elevenVoiceId?: string | null;
+}
+
+export const DEFAULT_INTRO_SEGMENTS: IntroSegment[] = [
+  {
+    id: 'welcome',
+    kind: 'speech',
+    text: 'Namaskar, ladies and gentlemen, and welcome to the Mahtani Residence!',
+  },
+  { id: 'scratch', kind: 'sfx', sfx: 'scratch' },
+  {
+    id: 'roast',
+    kind: 'speech',
+    // "Listen up" spelled out so the engine pronounces it properly.
+    text:
+      'Listen up Bhenchodes. Tonight, we celebrate ASS BUMP — Amrit. Sanjay. Sunil. And Bhavesh. ' +
+      'Some will kick ass, some will catch their ass. ' +
+      'The cards will decide your fate in just 2 minutes! Get ready for a bumpy ass ride!',
+  },
+];
+
+export function getIntroSegments(): IntroSegment[] {
+  const raw = localStorage.getItem(INTRO_SEGMENTS_KEY);
+  if (!raw) return DEFAULT_INTRO_SEGMENTS.map((s) => ({ ...s }));
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length) return parsed;
+  } catch {
+    // fall through to defaults on corrupt storage
+  }
+  return DEFAULT_INTRO_SEGMENTS.map((s) => ({ ...s }));
+}
+
+export function saveIntroSegments(segments: IntroSegment[]) {
+  localStorage.setItem(INTRO_SEGMENTS_KEY, JSON.stringify(segments));
+}
+
+export function resetIntroSegments() {
+  localStorage.removeItem(INTRO_SEGMENTS_KEY);
+}
+
+/** Flat text of the intro, for anywhere that needs a plain string. */
+export const DEFAULT_INTRO = DEFAULT_INTRO_SEGMENTS.filter((s) => s.kind === 'speech')
+  .map((s) => s.text)
+  .join(' ');
 
 export const DEFAULT_LEVEL = 'Attention players. Level {level} is complete. Blinds are now {smallBlind} and {bigBlind}. Good luck!';
 
