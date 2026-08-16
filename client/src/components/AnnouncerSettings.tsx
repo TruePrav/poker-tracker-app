@@ -11,7 +11,13 @@ import {
   playClip,
   stopAll,
   CLIPS,
+  getProvider,
+  setProvider,
+  getElevenVoiceId,
+  setElevenVoiceId,
+  type Provider,
 } from '../utils/announcer';
+
 import {
   getScripts,
   saveScripts,
@@ -20,6 +26,13 @@ import {
   DEFAULT_LEVEL,
   renderTemplate,
 } from '../utils/announcementScripts';
+
+interface ElevenVoice {
+  voiceId: string;
+  name: string;
+  labels?: Record<string, string>;
+  previewUrl?: string | null;
+}
 
 interface Props {
   onClose: () => void;
@@ -30,9 +43,42 @@ export function AnnouncerSettings({ onClose }: Props) {
   const [settings, setSettings] = useState(getSettings());
   const [scripts, setScripts] = useState(getScripts());
   const [showVoiceHelp, setShowVoiceHelp] = useState(false);
+  const [providerState, setProviderState] = useState<Provider>(getProvider());
+  const [elevenStatus, setElevenStatus] = useState<'unknown' | 'ok' | 'missing'>('unknown');
+  const [elevenVoices, setElevenVoices] = useState<ElevenVoice[]>([]);
+  const [elevenVoiceId, setElevenVoiceIdState] = useState<string | null>(getElevenVoiceId());
+  const [loadingEleven, setLoadingEleven] = useState(false);
+  const [elevenError, setElevenError] = useState('');
+
+  async function loadElevenVoices() {
+    setLoadingEleven(true);
+    setElevenError('');
+    try {
+      const res = await fetch('/api/tts/voices');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setElevenError(body.error || `Could not load voices (HTTP ${res.status})`);
+        return;
+      }
+      const data = await res.json();
+      setElevenVoices(data.voices || []);
+    } catch (err: any) {
+      setElevenError(err?.message || 'Could not reach the server');
+    } finally {
+      setLoadingEleven(false);
+    }
+  }
 
   useEffect(() => {
     loadVoices().then((v) => setVoices(rankVoices(v)));
+    // Only offer ElevenLabs if the server actually has a key.
+    fetch('/api/tts/status')
+      .then((r) => r.json())
+      .then((d) => {
+        setElevenStatus(d.configured ? 'ok' : 'missing');
+        if (d.configured && getProvider() === 'elevenlabs') loadElevenVoices();
+      })
+      .catch(() => setElevenStatus('missing'));
   }, []);
 
   const update = (patch: Partial<ReturnType<typeof getSettings>>) => {
@@ -73,8 +119,76 @@ export function AnnouncerSettings({ onClose }: Props) {
           <span className="text-sm text-gray-200">Announcements enabled on this device</span>
         </label>
 
-        {/* Voice */}
+        {/* Provider: ElevenLabs if the server has a key, otherwise browser voices */}
         <div className="mb-4">
+          <label className="block text-xs font-medium text-gray-400 mb-1">Voice engine</label>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => { setProviderState('browser'); setProvider('browser'); }}
+              className={`px-3 py-2 rounded-lg text-xs font-medium ${
+                providerState === 'browser' ? 'bg-felt text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              Browser voice (offline)
+            </button>
+            <button
+              onClick={async () => {
+                setProviderState('elevenlabs');
+                setProvider('elevenlabs');
+                if (elevenVoices.length === 0) await loadElevenVoices();
+              }}
+              disabled={elevenStatus === 'missing'}
+              className={`px-3 py-2 rounded-lg text-xs font-medium disabled:opacity-40 ${
+                providerState === 'elevenlabs' ? 'bg-gold text-gray-900' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              ⭐ ElevenLabs {elevenStatus === 'missing' ? '(no API key on server)' : ''}
+            </button>
+          </div>
+
+          {elevenStatus === 'missing' && (
+            <p className="text-[11px] text-yellow-400 mt-1">
+              Set <code>ELEVENLABS_API_KEY</code> in Vercel → Settings → Environment Variables, then redeploy.
+            </p>
+          )}
+
+          {providerState === 'elevenlabs' && elevenStatus === 'ok' && (
+            <div className="mt-2">
+              <div className="flex items-center gap-2 mb-1">
+                <label className="block text-xs font-medium text-gray-400">
+                  ElevenLabs voice {elevenVoices.length > 0 ? `(${elevenVoices.length} on your account)` : ''}
+                </label>
+                <button
+                  onClick={loadElevenVoices}
+                  className="text-[11px] text-felt hover:underline"
+                >
+                  {loadingEleven ? 'loading…' : 'refresh'}
+                </button>
+              </div>
+              <select
+                value={elevenVoiceId || ''}
+                onChange={(e) => { setElevenVoiceId(e.target.value || null); setElevenVoiceIdState(e.target.value || null); }}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-felt"
+              >
+                <option value="">Select a voice…</option>
+                {elevenVoices.map((v) => (
+                  <option key={v.voiceId} value={v.voiceId}>
+                    {v.name}
+                    {v.labels?.accent ? ` — ${v.labels.accent}` : ''}
+                    {v.labels?.description ? `, ${v.labels.description}` : ''}
+                  </option>
+                ))}
+              </select>
+              {elevenError && <p className="text-[11px] text-red-400 mt-1">{elevenError}</p>}
+              <p className="text-[11px] text-gray-500 mt-1">
+                Falls back to the browser voice automatically if the API fails mid-game.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Voice */}
+        <div className={`mb-4 ${providerState === 'elevenlabs' ? 'opacity-60' : ''}`}>
           <label className="block text-xs font-medium text-gray-400 mb-1">
             Voice {indianVoices.length > 0
               ? `— ${indianVoices.length} Indian voice${indianVoices.length > 1 ? 's' : ''} found on this device`
@@ -133,7 +247,7 @@ export function AnnouncerSettings({ onClose }: Props) {
               <p>
                 <span className="text-gray-100">Windows:</span> Settings → Time &amp; Language → Speech →
                 Manage voices → Add voices → English (India) → gives <em>Heera</em>, <em>Ravi</em>,{' '}
-                <em>Priya</em>.
+                <em>Priya</em>. Close all browsers and Narrator first, or Windows refuses to install.
               </p>
               <p className="text-gray-500 pt-1">Reload this page after installing so they appear.</p>
             </div>
