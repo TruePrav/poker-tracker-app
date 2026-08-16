@@ -58,6 +58,7 @@ export function TournamentPage() {
   const [showTopUp, setShowTopUp] = useState(false);
   const [showPayout, setShowPayout] = useState(false);
   const [showChipCount, setShowChipCount] = useState(false);
+  const [balancePlan, setBalancePlan] = useState<ReturnType<typeof buildBalancePlan>>(null);
   const [payoutStep, setPayoutStep] = useState<1 | 2>(1);
   const [chipCounts, setChipCounts] = useState<Record<number, string>>({});
   const [payoutAmounts, setPayoutAmounts] = useState<Record<number, string>>({});
@@ -370,72 +371,144 @@ export function TournamentPage() {
     [manualSeatPlayerId, tournament?.entries, addEntry, recordBuyIn, movePlayer, checkBalance]
   );
 
-  const handleMinimalBalance = useCallback(async () => {
-    if (isBalancing) return;
-    setIsBalancing(true);
-    try {
-      const tables = (tournament?.tables || []).map((t) => ({
-        ...t,
-        seated: (t.entries || []).filter((e) => e.status === 'SEATED'),
-      }));
-      if (tables.length < 2) return;
+  /**
+   * Work out the moves that would even out the tables, without performing any
+   * of them. Returns the move list plus what each table would look like after,
+   * so the plan can be shown before it is committed.
+   *
+   * Seats are balanced first, since that is what actually matters. Where there
+   * is a choice of who to move, the biggest stacks go to the lightest table, so
+   * a break-time count also evens out the chips instead of moving someone at
+   * random.
+   */
+  const buildBalancePlan = useCallback(() => {
+    const tables = (tournament?.tables || []).map((t) => ({
+      id: t.id,
+      tableNumber: t.tableNumber,
+      seated: (t.entries || []).filter((e) => e.status === 'SEATED'),
+    }));
+    if (tables.length < 2) return null;
 
-      const totalSeated = tables.reduce((sum, t) => sum + t.seated.length, 0);
-      if (totalSeated === 0) return;
+    const totalSeated = tables.reduce((sum, t) => sum + t.seated.length, 0);
+    if (totalSeated === 0) return null;
 
-      const base = Math.floor(totalSeated / tables.length);
-      let remainder = totalSeated % tables.length;
+    const chipsOf = (playerId: number) => parseInt(chipCounts[playerId] || '0') || 0;
+    const chipsOfTable = (seated: { playerId: number }[]) =>
+      seated.reduce((sum, e) => sum + chipsOf(e.playerId), 0);
 
-      const sorted = [...tables].sort((a, b) => b.seated.length - a.seated.length);
-      const targets = new Map<number, number>();
-      for (const t of sorted) {
-        const target = base + (remainder > 0 ? 1 : 0);
-        targets.set(t.id, target);
-        if (remainder > 0) remainder--;
-      }
-
-      const deficits: Array<{ tableId: number; seats: number[] }> = [];
-      const surpluses: Array<{ tableId: number; movers: typeof tables[number]['seated'] }> = [];
-
-      for (const t of tables) {
-        const target = targets.get(t.id) || 0;
-        const diff = t.seated.length - target;
-        if (diff < 0) {
-          const occupied = new Set(t.seated.map((e) => e.seatNumber));
-          const openSeats: number[] = [];
-          for (let s = 1; s <= MAX_SEATS_PER_TABLE; s++) {
-            if (!occupied.has(s)) openSeats.push(s);
-          }
-          deficits.push({ tableId: t.id, seats: openSeats.slice(0, Math.abs(diff)) });
-        } else if (diff > 0) {
-          const shuffled = [...t.seated];
-          for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-          }
-          surpluses.push({ tableId: t.id, movers: shuffled.slice(0, diff) });
-        }
-      }
-
-      let deficitIndex = 0;
-      for (const source of surpluses) {
-        for (const mover of source.movers) {
-          while (deficitIndex < deficits.length && deficits[deficitIndex].seats.length === 0) {
-            deficitIndex++;
-          }
-          if (deficitIndex >= deficits.length) break;
-          const targetDeficit = deficits[deficitIndex];
-          const targetSeat = targetDeficit.seats.shift();
-          if (!targetSeat) continue;
-          await movePlayer(mover.playerId, targetDeficit.tableId, targetSeat);
-        }
-      }
-
-      await checkBalance();
-    } finally {
-      setIsBalancing(false);
+    const base = Math.floor(totalSeated / tables.length);
+    let remainder = totalSeated % tables.length;
+    const targets = new Map<number, number>();
+    for (const t of [...tables].sort((a, b) => b.seated.length - a.seated.length)) {
+      targets.set(t.id, base + (remainder > 0 ? 1 : 0));
+      if (remainder > 0) remainder--;
     }
-  }, [isBalancing, tournament?.tables, movePlayer, checkBalance]);
+
+    const deficits: Array<{ tableId: number; tableNumber: number; seats: number[]; chips: number }> = [];
+    const surpluses: Array<{
+      tableNumber: number;
+      movers: Array<{ playerId: number; name: string; seatNumber: number | null; chips: number }>;
+    }> = [];
+
+    for (const t of tables) {
+      const target = targets.get(t.id) || 0;
+      const diff = t.seated.length - target;
+      if (diff < 0) {
+        const occupied = new Set(t.seated.map((e) => e.seatNumber));
+        const openSeats: number[] = [];
+        for (let s = 1; s <= MAX_SEATS_PER_TABLE; s++) if (!occupied.has(s)) openSeats.push(s);
+        deficits.push({
+          tableId: t.id,
+          tableNumber: t.tableNumber,
+          seats: openSeats.slice(0, Math.abs(diff)),
+          chips: chipsOfTable(t.seated),
+        });
+      } else if (diff > 0) {
+        // Biggest stacks move first so they can be sent to the lightest table.
+        const candidates = t.seated
+          .map((e) => ({
+            playerId: e.playerId,
+            name: e.player?.name || `#${e.playerId}`,
+            seatNumber: e.seatNumber,
+            chips: chipsOf(e.playerId),
+          }))
+          .sort((a, b) => b.chips - a.chips);
+        surpluses.push({ tableNumber: t.tableNumber, movers: candidates.slice(0, diff) });
+      }
+    }
+
+    const moves: Array<{
+      playerId: number;
+      name: string;
+      chips: number;
+      fromTableNumber: number;
+      fromSeat: number | null;
+      toTableId: number;
+      toTableNumber: number;
+      toSeat: number;
+    }> = [];
+
+    for (const source of surpluses) {
+      for (const mover of source.movers) {
+        // Lightest table with a free seat wins the biggest remaining stack.
+        const target = deficits
+          .filter((d) => d.seats.length > 0)
+          .sort((a, b) => a.chips - b.chips)[0];
+        if (!target) break;
+        const toSeat = target.seats.shift();
+        if (!toSeat) continue;
+        target.chips += mover.chips;
+        moves.push({
+          playerId: mover.playerId,
+          name: mover.name,
+          chips: mover.chips,
+          fromTableNumber: source.tableNumber,
+          fromSeat: mover.seatNumber,
+          toTableId: target.tableId,
+          toTableNumber: target.tableNumber,
+          toSeat,
+        });
+      }
+    }
+
+    const movedIds = new Set(moves.map((m) => m.playerId));
+    const after = tables.map((t) => {
+      const staying = t.seated.filter((e) => !movedIds.has(e.playerId));
+      const arriving = moves.filter((m) => m.toTableId === t.id);
+      return {
+        tableNumber: t.tableNumber,
+        before: { players: t.seated.length, chips: chipsOfTable(t.seated) },
+        after: {
+          players: staying.length + arriving.length,
+          chips: chipsOfTable(staying) + arriving.reduce((s, m) => s + m.chips, 0),
+        },
+      };
+    });
+
+    return { moves, after };
+  }, [tournament?.tables, chipCounts]);
+
+  const applyBalancePlan = useCallback(
+    async (moves: Array<{ playerId: number; toTableId: number; toSeat: number }>) => {
+      if (isBalancing) return;
+      setIsBalancing(true);
+      try {
+        for (const move of moves) {
+          await movePlayer(move.playerId, move.toTableId, move.toSeat);
+        }
+        await checkBalance();
+      } finally {
+        setIsBalancing(false);
+      }
+    },
+    [isBalancing, movePlayer, checkBalance]
+  );
+
+  const handleMinimalBalance = useCallback(async () => {
+    const plan = buildBalancePlan();
+    if (!plan) return;
+    await applyBalancePlan(plan.moves);
+  }, [buildBalancePlan, applyBalancePlan]);
 
   const handleRebuyClick = useCallback((playerId: number) => {
     if (tournament?.buyInType === 'VARIABLE') {
@@ -1311,19 +1384,101 @@ export function TournamentPage() {
                     )}
                   </div>
 
-                  <div className="flex-none px-5 py-3 border-t border-gray-800 flex gap-2">
+                  {/* Rebalance preview */}
+                  {balancePlan && (
+                    <div className="flex-none border-t border-gray-800 px-5 py-3 bg-gray-950 max-h-64 overflow-y-auto">
+                      <h3 className="text-sm font-semibold text-white mb-2">
+                        Proposed moves{' '}
+                        <span className="text-gray-500 font-normal">
+                          ({balancePlan.moves.length})
+                        </span>
+                      </h3>
+
+                      {balancePlan.moves.length === 0 ? (
+                        <p className="text-xs text-felt">
+                          Tables are already even. Nothing to move.
+                        </p>
+                      ) : (
+                        <div className="space-y-1 mb-3">
+                          {balancePlan.moves.map((m) => (
+                            <div key={m.playerId} className="flex items-center gap-2 text-xs">
+                              <ArrowRightLeft className="w-3 h-3 text-gold flex-none" />
+                              <span className="text-white flex-1 min-w-0 truncate">{m.name}</span>
+                              <span className="text-gray-400 font-mono flex-none">
+                                {m.chips > 0 ? m.chips.toLocaleString() : '—'}
+                              </span>
+                              <span className="text-gray-500 flex-none">
+                                T{m.fromTableNumber} s{m.fromSeat} &rarr;{' '}
+                                <span className="text-gold">
+                                  T{m.toTableNumber} s{m.toSeat}
+                                </span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="space-y-1 border-t border-gray-800 pt-2">
+                        {balancePlan.after.map((t) => (
+                          <div key={t.tableNumber} className="flex items-center gap-2 text-xs">
+                            <span className="text-gray-400 flex-1">Table {t.tableNumber}</span>
+                            <span className="text-gray-600 font-mono">
+                              {t.before.players}p / {t.before.chips.toLocaleString()}
+                            </span>
+                            <span className="text-gray-600">&rarr;</span>
+                            <span className="text-white font-mono">
+                              {t.after.players}p / {t.after.chips.toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex-none px-5 py-3 border-t border-gray-800 flex flex-wrap gap-2">
                     <button
                       onClick={() => setChipCounts({})}
                       className="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-medium flex-none"
                     >
                       Clear
                     </button>
-                    <button
-                      onClick={() => setShowChipCount(false)}
-                      className="flex-1 px-4 py-2.5 bg-felt hover:bg-felt-dark text-white rounded-lg text-sm font-medium"
-                    >
-                      Done
-                    </button>
+
+                    {balancePlan ? (
+                      <>
+                        <button
+                          onClick={() => setBalancePlan(null)}
+                          className="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-sm font-medium flex-none"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await applyBalancePlan(balancePlan.moves);
+                            setBalancePlan(null);
+                          }}
+                          disabled={isBalancing || balancePlan.moves.length === 0}
+                          className="flex-1 px-4 py-2.5 bg-gold hover:bg-gold-light disabled:opacity-50 text-gray-900 rounded-lg text-sm font-bold"
+                        >
+                          {isBalancing ? 'Moving…' : `Apply ${balancePlan.moves.length} move(s)`}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => setBalancePlan(buildBalancePlan())}
+                          disabled={(tournament.tables?.length || 0) < 2}
+                          className="flex-1 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2"
+                        >
+                          <ArrowRightLeft className="w-4 h-4" /> Preview rebalance
+                        </button>
+                        <button
+                          onClick={() => setShowChipCount(false)}
+                          className="px-4 py-2.5 bg-felt hover:bg-felt-dark text-white rounded-lg text-sm font-medium flex-none"
+                        >
+                          Done
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
