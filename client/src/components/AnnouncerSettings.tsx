@@ -132,9 +132,12 @@ export function AnnouncerSettings({ onClose }: Props) {
   const otherVoices = voices.filter((v) => !isIndianVoice(v));
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-[60] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl p-5 sm:p-6 w-full max-w-2xl my-4">
-        <div className="flex items-center justify-between mb-4">
+    // The panel is taller than a laptop viewport, so it is a bounded flex
+    // column with its own scrolling body. Centring a too-tall card in a flex
+    // container clips the top out of reach, which hid the voice engine section.
+    <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-2xl max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-5 sm:px-6 pt-5 sm:pt-6 pb-3 flex-none border-b border-gray-800">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <Volume2 className="w-5 h-5 text-gold" /> Announcer Settings
           </h2>
@@ -142,6 +145,9 @@ export function AnnouncerSettings({ onClose }: Props) {
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Scrolling body — the header and the Done button stay pinned. */}
+        <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4">
 
         {/* Enable */}
         <label className="flex items-center gap-3 mb-4 cursor-pointer">
@@ -532,12 +538,16 @@ export function AnnouncerSettings({ onClose }: Props) {
           </button>
         </div>
 
-        <button
-          onClick={onClose}
-          className="w-full mt-5 px-4 py-2.5 bg-felt hover:bg-felt-dark text-white rounded-lg font-medium text-sm"
-        >
-          Done
-        </button>
+        </div>
+
+        <div className="flex-none px-5 sm:px-6 py-3 border-t border-gray-800">
+          <button
+            onClick={onClose}
+            className="w-full px-4 py-2.5 bg-felt hover:bg-felt-dark text-white rounded-lg font-medium text-sm"
+          >
+            Done
+          </button>
+        </div>
       </div>
     </div>
   );
