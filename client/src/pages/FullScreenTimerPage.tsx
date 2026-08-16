@@ -227,8 +227,10 @@ export function FullScreenTimerPage() {
   }, []);
 
   const runIntro = () => {
-    playClip(CLIPS.pokerNowStart);
+    // Full intro first, then Bhavesh's clip as the closer. Both go through the
+    // same queue, so they play back to back in this order.
     playIntro(getIntroSegments());
+    playClip(CLIPS.pokerNowStart);
   };
 
   const handleArm = async () => {
