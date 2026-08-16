@@ -32,6 +32,8 @@ interface ElevenVoice {
   name: string;
   labels?: Record<string, string>;
   previewUrl?: string | null;
+  /** True for the Indian English voices pulled from the shared library. */
+  shared?: boolean;
 }
 
 interface Props {
@@ -49,6 +51,26 @@ export function AnnouncerSettings({ onClose }: Props) {
   const [elevenVoiceId, setElevenVoiceIdState] = useState<string | null>(getElevenVoiceId());
   const [loadingEleven, setLoadingEleven] = useState(false);
   const [elevenError, setElevenError] = useState('');
+  const [voiceSearch, setVoiceSearch] = useState('');
+
+  const indianEleven = elevenVoices.filter((v) => v.shared);
+  const accountEleven = elevenVoices.filter((v) => !v.shared);
+  const matches = (v: ElevenVoice) => {
+    const q = voiceSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      v.name.toLowerCase().includes(q) ||
+      (v.labels?.description || '').toLowerCase().includes(q) ||
+      (v.labels?.use_case || '').toLowerCase().includes(q)
+    );
+  };
+  const selectedEleven = elevenVoices.find((v) => v.voiceId === elevenVoiceId) || null;
+
+  // Auditioning uses ElevenLabs' own hosted sample, so it costs nothing.
+  const playPreview = (url?: string | null) => {
+    if (!url) return;
+    new Audio(url).play().catch(() => {});
+  };
 
   async function loadElevenVoices() {
     setLoadingEleven(true);
@@ -156,7 +178,8 @@ export function AnnouncerSettings({ onClose }: Props) {
             <div className="mt-2">
               <div className="flex items-center gap-2 mb-1">
                 <label className="block text-xs font-medium text-gray-400">
-                  ElevenLabs voice {elevenVoices.length > 0 ? `(${elevenVoices.length} on your account)` : ''}
+                  ElevenLabs voice{' '}
+                  {indianEleven.length > 0 ? `(${indianEleven.length} Indian voices)` : ''}
                 </label>
                 <button
                   onClick={loadElevenVoices}
@@ -165,20 +188,60 @@ export function AnnouncerSettings({ onClose }: Props) {
                   {loadingEleven ? 'loading…' : 'refresh'}
                 </button>
               </div>
+
+              <input
+                value={voiceSearch}
+                onChange={(e) => setVoiceSearch(e.target.value)}
+                placeholder="Filter by name or style, e.g. deep, narrator, female…"
+                className="w-full mb-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-felt"
+              />
+
               <select
                 value={elevenVoiceId || ''}
                 onChange={(e) => { setElevenVoiceId(e.target.value || null); setElevenVoiceIdState(e.target.value || null); }}
+                size={8}
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-felt"
               >
                 <option value="">Select a voice…</option>
-                {elevenVoices.map((v) => (
-                  <option key={v.voiceId} value={v.voiceId}>
-                    {v.name}
-                    {v.labels?.accent ? ` — ${v.labels.accent}` : ''}
-                    {v.labels?.description ? `, ${v.labels.description}` : ''}
-                  </option>
-                ))}
+                {indianEleven.filter(matches).length > 0 && (
+                  <optgroup label="🇮🇳 Indian English">
+                    {indianEleven.filter(matches).map((v) => (
+                      <option key={v.voiceId} value={v.voiceId}>
+                        {v.name}
+                        {v.labels?.description ? ` — ${v.labels.description}` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {accountEleven.filter(matches).length > 0 && (
+                  <optgroup label="Your account">
+                    {accountEleven.filter(matches).map((v) => (
+                      <option key={v.voiceId} value={v.voiceId}>
+                        {v.name}
+                        {v.labels?.accent ? ` — ${v.labels.accent}` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
+
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  onClick={() => playPreview(selectedEleven?.previewUrl)}
+                  disabled={!selectedEleven?.previewUrl}
+                  className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-gray-200 rounded text-xs font-medium flex items-center gap-1"
+                >
+                  <Play className="w-3 h-3" /> Preview sample
+                </button>
+                <button
+                  onClick={() => speak('Blinds are going up. Fifty and one hundred. Rebuys close at the end of this level.')}
+                  disabled={!elevenVoiceId}
+                  className="px-3 py-1.5 bg-felt hover:bg-felt-dark disabled:opacity-40 text-white rounded text-xs font-medium flex items-center gap-1"
+                >
+                  <Play className="w-3 h-3" /> Test announcement
+                </button>
+              </div>
+
               {elevenError && <p className="text-[11px] text-red-400 mt-1">{elevenError}</p>}
               <p className="text-[11px] text-gray-500 mt-1">
                 Falls back to the browser voice automatically if the API fails mid-game.

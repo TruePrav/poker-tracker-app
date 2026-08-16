@@ -17,7 +17,52 @@ function apiKey(): string | null {
   return process.env.ELEVENLABS_API_KEY || null;
 }
 
-// GET the voices available on the configured account
+/**
+ * Indian English voices from the public shared library.
+ *
+ * The account itself has no Indian voices, and the shared-library ids work
+ * directly in text-to-speech without being added to the account first. Preview
+ * URLs are signed with a rotating timestamp, so they are fetched rather than
+ * hard-coded, and cached for an hour to keep the settings screen snappy.
+ */
+const SHARED_TTL_MS = 60 * 60 * 1000;
+let sharedCache: { at: number; voices: any[] } | null = null;
+
+async function fetchIndianShared(key: string): Promise<any[]> {
+  if (sharedCache && Date.now() - sharedCache.at < SHARED_TTL_MS) return sharedCache.voices;
+
+  const seen = new Map<string, any>();
+  for (let page = 0; page < 4; page++) {
+    const url = `${ELEVEN_BASE}/shared-voices?page_size=100&accent=indian&language=en&page=${page}`;
+    const upstream = await fetch(url, { headers: { 'xi-api-key': key } });
+    if (!upstream.ok) break;
+    const data: any = await upstream.json();
+    const batch = data.voices || [];
+    if (batch.length === 0) break;
+    for (const v of batch) {
+      if (!v.voice_id || !v.preview_url || seen.has(v.voice_id)) continue;
+      seen.set(v.voice_id, {
+        voiceId: v.voice_id,
+        name: v.name,
+        labels: {
+          accent: v.accent || 'indian',
+          description: [v.gender, v.age, v.descriptive].filter(Boolean).join(' '),
+          use_case: v.use_case || '',
+        },
+        previewUrl: v.preview_url,
+        shared: true,
+        popularity: Number(v.usage_character_count_1y || 0),
+      });
+    }
+  }
+
+  // Most-used first, which is a decent proxy for which ones sound good.
+  const voices = [...seen.values()].sort((a, b) => b.popularity - a.popularity);
+  sharedCache = { at: Date.now(), voices };
+  return voices;
+}
+
+// GET the voices on the account plus the Indian English shared-library voices
 ttsRoutes.get('/voices', async (_req, res) => {
   const key = apiKey();
   if (!key) {
@@ -34,14 +79,24 @@ ttsRoutes.get('/voices', async (_req, res) => {
         .json({ error: 'ElevenLabs rejected the request.', detail: detail.slice(0, 300) });
     }
     const data: any = await upstream.json();
-    const voices = (data.voices || []).map((v: any) => ({
+    const own = (data.voices || []).map((v: any) => ({
       voiceId: v.voice_id,
       name: v.name,
       // labels usually carry accent/description, useful for spotting Indian voices
       labels: v.labels || {},
       previewUrl: v.preview_url || null,
+      shared: false,
     }));
-    res.json({ voices });
+
+    // A shared-library failure must not take the account voices down with it.
+    let indian: any[] = [];
+    try {
+      indian = await fetchIndianShared(key);
+    } catch (err: any) {
+      console.warn('[tts] shared voice lookup failed:', err?.message);
+    }
+
+    res.json({ voices: [...own, ...indian], ownCount: own.length, indianCount: indian.length });
   } catch (err: any) {
     res.status(502).json({ error: 'Could not reach ElevenLabs.', detail: err?.message });
   }
